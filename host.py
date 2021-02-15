@@ -6,8 +6,8 @@ import torchvision
 
 from utils import time_stamp, kill_old_process, clean_pid, get_newest
 
-sys.path.append("../deepdaze/deep_daze_repo/deep_daze")
-from deep_daze.deep_daze import Imagine
+sys.path.append("../deepdaze/")
+from deep_daze_repo.deep_daze.deep_daze import Imagine
 
     
 
@@ -36,8 +36,9 @@ try:
 
     previous_img = None
     newest_img = None
+    count = 0
     while True:
-        newest_img = "new"  #get_newest(host_in)
+        newest_img = get_newest(host_in)
         
         # maybe update target img
         if newest_img != previous_img:
@@ -46,8 +47,8 @@ try:
         img_tensor, loss = model.train_step()
         # save new img
         img_pil = to_pil(img_tensor.cpu())
-        img_pil.save(os.path.join(host_out, str(newest_img) + ".png"))
-        img_pil.save(os.path.join(host_out, "new.png"))
+        new_name = str(count) + ".png"
+        img_pil.save(os.path.join(host_out, new_name))
         # next
         previous_img = newest_img
 

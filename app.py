@@ -10,6 +10,7 @@ from PIL import Image
 
 from utils import time_stamp
 
+
 def main(host):
     repo_name = "AuViMi"
     client_out = os.path.join("~", repo_name, "client_out")
@@ -41,6 +42,8 @@ def main(host):
 
     to_pil = torchvision.transforms.ToPILImage()
 
+    newest = 0
+    previous = 0
     count = 0
     while(cap.isOpened()):
         success, frame_np = cap.read()
@@ -64,7 +67,7 @@ def main(host):
 
         if success:
             # move img over:
-            img_name = "new.png" #str(count)
+            img_name = str(count) + ".png"
             count += 1
             img_path = os.path.join(client_out, img_name)
             target_path = os.path.join('~', repo_name, host_in, img_name)
@@ -76,15 +79,21 @@ def main(host):
             cv2.imshow("Input", rgb_frame)
             
             # get processed img (if there is a new one):
-            host_path = os.path.join(host_out, "new.png")
-            received_img_name = str(count) + ".png"
-            client_path = os.path.join(client_in, received_img_name)
-            result = subprocess.run(['scp', host, host_path, client_path])
-            print("result: ", result)
-            # load processed img
-            processed_img = Image.open(client_path)
-            # show processed img
-            cv2.imshow("Mirror", processed_img)
+            # check get list of imgs
+            byte_list = subprocess.run(['ssh', host, 'ls ' + host_out], stdout=subprocess.PIPE)
+            all_host_outs = byte_list.decode("utf-8").split("\n")[:-1]
+            newest = max([int(name[-4]) for name in all_host_outs])
+            if newest > previous:
+                new_img_name = str(newest) + ".png"
+                host_path = os.path.join(host_out, new_img_name)
+                client_path = os.path.join(client_in, new_img_name)
+                subprocess.run(['scp', host, host_path, client_path])
+                # load processed img
+                processed_img = Image.open(client_path)
+                # show processed img
+                cv2.imshow("Mirror", processed_img)
+                previous = newest
+                
         else:
             break
               
