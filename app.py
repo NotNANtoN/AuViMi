@@ -76,7 +76,7 @@ def main(host, user):
             #np.save(img_path, rgb_frame)
             frame.save(img_path)
            
-            subprocess.run(['scp', img_path, host_scp_path + total_path + target_path])
+            subprocess.run(['rsync', img_path, host_scp_path + total_path + target_path])
             # display img
             rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             cv2.imshow("Input", rgb_frame)
@@ -85,14 +85,15 @@ def main(host, user):
             # check get list of imgs
             process_out = subprocess.run(['ssh', host, 'ls ' + total_path + host_out], stdout=subprocess.PIPE)
             all_host_outs = process_out.stdout.decode("utf-8").split("\n")[:-1]
+            all_host_outs = [name for name in all_host_outs if name.endswith(".png")
             newest = max([int(name[:-4]) for name in all_host_outs]) if len(all_host_outs) > 0 else 0
             if newest > previous:
                 new_img_name = str(newest) + ".png"
                 host_path = os.path.join(host_out, new_img_name)
                 client_path = os.path.join(client_in, new_img_name)
-                subprocess.run(['scp', host_scp_path + total_path + host_path, client_path])
+                subprocess.run(['rsync', host_scp_path + total_path + host_path, client_path])
                 # load processed img
-                processed_img = Image.open(client_path)
+                processed_img = np.array(Image.open(client_path))
                 # show processed img
                 cv2.imshow("Mirror", processed_img)
                 previous = newest
