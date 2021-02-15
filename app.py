@@ -80,8 +80,8 @@ def main(host):
             
             # get processed img (if there is a new one):
             # check get list of imgs
-            byte_list = subprocess.run(['ssh', host, 'ls ' + host_out], stdout=subprocess.PIPE)
-            all_host_outs = byte_list.decode("utf-8").split("\n")[:-1]
+            process_out = subprocess.run(['ssh', host, 'ls ' + host_out], stdout=subprocess.PIPE)
+            all_host_outs = process_out.stdout.decode("utf-8").split("\n")[:-1]
             newest = max([int(name[-4]) for name in all_host_outs])
             if newest > previous:
                 new_img_name = str(newest) + ".png"

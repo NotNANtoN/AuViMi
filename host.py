@@ -4,7 +4,7 @@ import time
 
 import torchvision
 
-from utils import time_stamp, kill_old_process, clean_pid, get_newest
+from utils import time_stamp, kill_old_process, clean_pid
 
 sys.path.append("../deepdaze/")
 from deep_daze_repo.deep_daze.deep_daze import Imagine
@@ -38,7 +38,7 @@ try:
     newest_img = None
     count = 0
     while True:
-        newest_img = get_newest(host_in)
+        newest_img = max([int(name[-4]) for name in os.listdir(host_in)])
         
         # maybe update target img
         if newest_img != previous_img:
