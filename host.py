@@ -13,9 +13,11 @@ kill_old_process(create_new=True)
 
 
 # Do some actual work here
-img_folder = "host_in"
-out_folder = "host_out"
-os.makedirs(img_folder, exist_ok=True)
+host_in = "host_in"
+host_out = "host_out"
+os.makedirs(host_in exist_ok=True)
+os.makedirs(host_out exist_ok=True)
+
 newest_img = None
 while True:
     images = os.listdir(img_folder)
