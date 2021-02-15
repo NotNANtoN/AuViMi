@@ -18,7 +18,7 @@ open(pidfile, 'w').write(pid)
 try:
     # Do some actual work here
     img_folder = "host_input"
-    os.makedirs(image_folder, exist_ok=True)
+    os.makedirs(img_folder, exist_ok=True)
     newest_img = None
     while True:
         images = os.listdir(img_folder)
