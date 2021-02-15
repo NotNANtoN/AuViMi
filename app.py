@@ -1,6 +1,7 @@
 import os
 import subprocess
 import pipes
+import time
 
 import numpy as np
 import cv2
@@ -49,6 +50,7 @@ def main(host, user):
     previous = 0
     count = 0
     while(cap.isOpened()):
+        start_loop_time = time.time()
         success, frame_np = cap.read()
         frame = to_pil(frame_np).convert("RGB")
         
@@ -82,24 +84,42 @@ def main(host, user):
             cv2.imshow("Input", rgb_frame)
             
             # get processed img (if there is a new one):
-            # check get list of imgs
-            process_out = subprocess.run(['ssh', host, 'ls ' + total_path + host_out], stdout=subprocess.PIPE)
-            all_host_outs = process_out.stdout.decode("utf-8").split("\n")[:-1]
-            all_host_outs = [name for name in all_host_outs if name.endswith(".png")]
-            newest = max([int(name[:-4]) for name in all_host_outs]) if len(all_host_outs) > 0 else 0
-            if newest > previous:
-                new_img_name = str(newest) + ".png"
+            approach = 2
+            
+            if approach == 1:
+                # check get list of imgs
+                process_out = subprocess.run(['ssh', host, 'ls ' + total_path + host_out], stdout=subprocess.PIPE)
+                all_host_outs = process_out.stdout.decode("utf-8").split("\n")[:-1]
+                all_host_outs = [name for name in all_host_outs if name.endswith(".png")]
+                newest = max([int(name[:-4]) for name in all_host_outs]) if len(all_host_outs) > 0 else 0
+                if newest > previous:
+                    new_img_name = str(newest) + ".png"
+                    host_path = os.path.join(host_out, new_img_name)
+                    client_path = os.path.join(client_in, new_img_name)
+                    subprocess.run(['rsync', host_scp_path + total_path + host_path, client_path])
+                    # load processed img
+                    processed_img = np.array(Image.open(client_path))
+                    # show processed img
+                    cv2.imshow("Mirror", processed_img)
+                    previous = newest
+            elif approach == 2:
+                new_img_name = "new.png"
+                local_img_name = str(count) + ".png"
                 host_path = os.path.join(host_out, new_img_name)
-                client_path = os.path.join(client_in, new_img_name)
-                subprocess.run(['rsync', host_scp_path + total_path + host_path, client_path])
-                # load processed img
-                processed_img = np.array(Image.open(client_path))
-                # show processed img
-                cv2.imshow("Mirror", processed_img)
-                previous = newest
+                client_path = os.path.join(client_in, local_img_name)
                 
+                if os.path.exists(client_path):
+                    # load processed img
+                    processed_img = np.array(Image.open(host_path))
+                    # show processed img
+                    cv2.imshow("Mirror", processed_img)
+            
+                # load new image asynchronously
+                subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
         else:
             break
+            
+        print("Time per loop: ", time.time() - start_loop_time)
               
     cap.release()
     
