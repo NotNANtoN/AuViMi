@@ -42,7 +42,7 @@ def main(host):
     while(cap.isOpened()):
         success, frame = cap.read()
         # resize to have smaller transfer
-        x, y = frame.size()
+        x, y = frame.shape()
         print(x, y)
         if x > y:
             y_target = resize_size
@@ -50,7 +50,7 @@ def main(host):
         else:
             x_target = resize_size
             y_target = int(y / x * x_target)   
-        frame = frame.resize((x_target, y_target)
+        frame = frame.resize((x_target, y_target))
         
         # return on escape
         if cv2.waitKey(33) == 27:

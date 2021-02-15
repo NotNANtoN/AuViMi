@@ -7,7 +7,6 @@ import torchvision
 from utils import time_stamp, kill_old_process, clean_pid, get_newest
 
 sys.path.append("../deepdaze/deep_daze_repo/deep_daze")
-print(sys.path)
 from deep_daze.deep_daze import Imagine
 
     
