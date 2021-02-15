@@ -13,10 +13,10 @@ from utils import time_stamp
 
 def main(host):
     repo_name = "AuViMi"
-    client_out = os.path.join("~", repo_name, "client_out")
-    client_in = os.path.join("~", repo_name, "client_in")
-    host_in = os.path.join("~", repo_name, "host_in")
-    host_out = os.path.join("~", repo_name, "host_out")
+    client_out = os.path.join(repo_name, "client_out")
+    client_in = os.path.join(repo_name, "client_in")
+    host_in = os.path.join(repo_name, "host_in")
+    host_out = os.path.join(repo_name, "host_out")
     host_python_path = "/home/anton/anaconda3/bin/python"
     
     resize_size = 224
@@ -73,7 +73,7 @@ def main(host):
             target_path = os.path.join('~', repo_name, host_in, img_name)
             #np.save(img_path, rgb_frame)
             frame.save(img_path)
-            subprocess.run(['scp', host, img_path, target_path])
+            subprocess.run(['scp', host, "~/" + img_path, "~/" + target_path])
             # display img
             rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             cv2.imshow("Input", rgb_frame)
@@ -87,7 +87,7 @@ def main(host):
                 new_img_name = str(newest) + ".png"
                 host_path = os.path.join(host_out, new_img_name)
                 client_path = os.path.join(client_in, new_img_name)
-                subprocess.run(['scp', host, host_path, client_path])
+                subprocess.run(['scp', host, "~/" + host_path, "~/" + client_path])
                 # load processed img
                 processed_img = Image.open(client_path)
                 # show processed img
