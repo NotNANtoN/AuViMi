@@ -2,6 +2,7 @@ import os
 import subprocess
 import pipes
 
+import numpy as np
 import cv2
 from PIL import Image
 
@@ -47,7 +48,8 @@ def main(host):
             img_name = time_stamp() + ".png"
             img_path = os.path.join(image_folder, img_name)
             target_path = os.path.join(repo_name, host_images, img_name)
-            rgb_frame.save(img_path)
+            np.save(img_path, rgb_frame)
+            #rgb_frame.save(img_path)
             subprocess.run(['scp', host, img_path, target_path])
             cv2.imshow("Video", rgb_frame)
         else:
