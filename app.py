@@ -13,10 +13,11 @@ from utils import time_stamp
 
 def main(host):
     repo_name = "AuViMi"
-    client_out = os.path.join(repo_name, "client_out")
-    client_in = os.path.join(repo_name, "client_in")
-    host_in = os.path.join(repo_name, "host_in")
-    host_out = os.path.join(repo_name, "host_out")
+    total_path = "~/AuViMi/"
+    client_out = os.path.join("client_out")
+    client_in = os.path.join("client_in")
+    host_in = os.path.join("host_in")
+    host_out = os.path.join("host_out")
     host_python_path = "/home/anton/anaconda3/bin/python"
     
     resize_size = 224
@@ -70,24 +71,24 @@ def main(host):
             img_name = str(count) + ".png"
             count += 1
             img_path = os.path.join(client_out, img_name)
-            target_path = os.path.join('~', repo_name, host_in, img_name)
+            target_path = os.path.join(host_in, img_name)
             #np.save(img_path, rgb_frame)
             frame.save(img_path)
-            subprocess.run(['scp', host, "~/" + img_path, "~/" + target_path])
+            subprocess.run(['scp', host, total_path + img_path, total_path + target_path])
             # display img
             rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             cv2.imshow("Input", rgb_frame)
             
             # get processed img (if there is a new one):
             # check get list of imgs
-            process_out = subprocess.run(['ssh', host, 'ls ' + host_out], stdout=subprocess.PIPE)
+            process_out = subprocess.run(['ssh', host, 'ls ' + total_path + host_out], stdout=subprocess.PIPE)
             all_host_outs = process_out.stdout.decode("utf-8").split("\n")[:-1]
             newest = max([int(name[-4]) for name in all_host_outs]) if len(all_host_outs) > 0 else 0
             if newest > previous:
                 new_img_name = str(newest) + ".png"
                 host_path = os.path.join(host_out, new_img_name)
                 client_path = os.path.join(client_in, new_img_name)
-                subprocess.run(['scp', host, "~/" + host_path, "~/" + client_path])
+                subprocess.run(['scp', host, total_path + host_path, total_path + client_path])
                 # load processed img
                 processed_img = Image.open(client_path)
                 # show processed img

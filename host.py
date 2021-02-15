@@ -32,8 +32,6 @@ try:
                 #start_image_train_iters=200,
                )
 
-
-
     previous_img = None
     newest_img = None
     count = 0
