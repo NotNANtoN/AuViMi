@@ -14,6 +14,7 @@ def main(host):
     client_int = "client_in"
     host_in = "host_in"
     host_processed = "host_out"
+    host_python_path = "/home/anton/anaconda3/bin/python"
 
     os.makedirs(client_out, exist_ok=True)
     os.makedirs(client_int, exist_ok=True)
@@ -27,7 +28,7 @@ def main(host):
     else:
         subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
     # start host process
-    subprocess.Popen(['ssh', host, 'cd AuViMi;', 'python3', 'host.py'])
+    subprocess.Popen(['ssh', host, 'cd AuViMi;', host_python_path, 'host.py'])
 
     cap = cv2.VideoCapture(0)
     if (cap.isOpened() == False):
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     try:
         main(host)
     finally:
-        subprocess.Popen(['ssh', host, 'python3', 'AuViMi/stop_host.py'])
+        subprocess.Popen(['ssh', host, host_python_path, '~/AuViMi/stop_host.py'])
     
 
 
