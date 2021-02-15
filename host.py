@@ -8,12 +8,12 @@ pidfile = "/tmp/mydaemon.pid"
 if os.path.isfile(pidfile):
     print("Process already exists, killing old process...")
     #old_pid = joblib.load(pidfile)
-    old_pid = file(pidfile, 'r').read()
+    old_pid = open(pidfile, 'r').read()
     print("Old PID: ", old_pid)
     os.kill(old_pid, singal.SIGTERM)
     time.sleep(2)
 #joblib.dump(pid, pidfile)
-file(pidfile, 'w').write(pid)
+open(pidfile, 'w').write(pid)
 
 try:
     # Do some actual work here
