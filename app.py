@@ -76,7 +76,7 @@ def main(host, user):
             #np.save(img_path, rgb_frame)
             frame.save(img_path)
            
-            subprocess.run(['rsync', img_path, host_scp_path + total_path + target_path])
+            subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
             # display img
             rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             cv2.imshow("Input", rgb_frame)
