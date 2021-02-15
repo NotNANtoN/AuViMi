@@ -27,3 +27,9 @@ def clean_pid():
     pidfile = "/tmp/mydaemon.pid"
     os.unlink(pidfile)
     
+def get_newest(path):
+    names = os.listdir(host_in)
+    names = [int(name[-4]) for name in names]  # remove ending
+    newest_img = max(names)
+    return newest_img
+
