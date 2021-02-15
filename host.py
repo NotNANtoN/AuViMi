@@ -45,7 +45,7 @@ try:
             model.set_clip_encoding(img=png_path)
             previous_img = newest_img
         # train one step
-        img_tensor, loss = model.train_step()
+        img_tensor, loss = model.train_step(0, count)
         # save new img
         img_pil = to_pil(img_tensor.cpu())
         new_name = str(count) + ".png"

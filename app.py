@@ -38,6 +38,7 @@ def main(host, user):
     subprocess.Popen(['ssh', host, 'cd AuViMi;', host_python_path, 'host.py'])
 
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # we only want to store the newsest img
     if (cap.isOpened() == False):
         cap.release()
         cap = cv2.VideoCapture(0)
