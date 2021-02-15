@@ -20,7 +20,7 @@ try:
     newest_img = None
     while True:
         images = os.listdir(img_folder)
-        print(images)<
+        print(images)
         time.sleep(2)
     
 finally:

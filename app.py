@@ -14,6 +14,8 @@ exists = subprocess.call(['ssh', host, 'test -e ' + pipes.quote(repo_name)]) == 
 print("Repo exists: ", exists)
 if not exists:
     subprocess.run(['ssh', host, 'git', 'clone', 'git@github.com:NotNANtoN/AuViMi.git'])
+else:
+    subprocess.run(['ssh', host, 'cd AuViMi', ';', 'git', 'pull'])
 # start host process
 subprocess.run(['ssh', host, 'python3', 'AuViMi/host.py'])
 
