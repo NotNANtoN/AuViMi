@@ -49,7 +49,7 @@ def main(host):
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img_name = time_stamp()
             img_path = os.path.join(client_out, img_name)
-            target_path = os.path.join(repo_name, host_in, img_name)
+            target_path = os.path.join('~', repo_name, host_in, img_name)
             np.save(img_path, rgb_frame)
             #rgb_frame.save(img_path)
             subprocess.run(['scp', host, img_path, target_path])
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     try:
         main(host)
     finally:
-        subprocess.Popen(['ssh', host, host_python_path, '~/AuViMi/stop_host.py'])
+        subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
     
 
 

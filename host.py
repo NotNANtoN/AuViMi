@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-from utils import time_stamp, kill_old_process
+from utils import time_stamp, kill_old_process, clean_pid
 
 sys.path.append("../deepdaze/deep_daze_repo/deep_daze")
 print(sys.path)
@@ -20,7 +20,11 @@ os.makedirs(host_out, exist_ok=True)
 
 newest_img = None
 while True:
-    images = os.listdir(img_folder)
+    images = os.listdir(host_in)
     print(images)
     time.sleep(2)
+
+
+clean_pid()
+
 

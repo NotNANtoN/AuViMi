@@ -16,8 +16,14 @@ def kill_old_process(create_new=False):
             old_pid = f.read()
         print("Old PID: ", old_pid)
         os.kill(int(old_pid), signal.SIGTERM)
+        os.unlink(pidfile)
         time.sleep(2)
     if create_new:
         with open(pidfile, 'w') as f:
             f.write(pid)
 
+
+def clean_pid():
+    pidfile = "/tmp/mydaemon.pid"
+    os.unlink(pidfile)
+    
