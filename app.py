@@ -10,13 +10,13 @@ from utils import time_stamp
 
 def main(host):
     repo_name = "AuViMi"
-    image_folder = "client_out"
-    processed_folder = "client_in"
-    host_images = "host_in"
+    client_out = "client_out"
+    client_int = "client_in"
+    host_in = "host_in"
     host_processed = "host_out"
 
-    os.makedirs(image_folder, exist_ok=True)
-    os.makedirs(processed_folder, exist_ok=True)
+    os.makedirs(client_out, exist_ok=True)
+    os.makedirs(client_int, exist_ok=True)
 
 
     # make sure that repo is cloned on host
@@ -44,14 +44,19 @@ def main(host):
 
         
         if success:
+            # move img over:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img_name = time_stamp() + ".png"
-            img_path = os.path.join(image_folder, img_name)
-            target_path = os.path.join(repo_name, host_images, img_name)
+            img_path = os.path.join(client_out, img_name)
+            target_path = os.path.join(repo_name, host_in, img_name)
             np.save(img_path, rgb_frame)
             #rgb_frame.save(img_path)
             subprocess.run(['scp', host, img_path, target_path])
+            # display img
             cv2.imshow("Video", rgb_frame)
+            
+            # get processed img (if there is a new one):
+            #subprocess.run(['scp', host, img_path, target_path])
         else:
             break
               
