@@ -42,14 +42,15 @@ try:
         # maybe update target img
         if newest_img != previous_img:
             model.set_clip_encoding(img=newest_img)
+            previous_img = newest_img
         # train one step
         img_tensor, loss = model.train_step()
         # save new img
         img_pil = to_pil(img_tensor.cpu())
         new_name = str(count) + ".png"
+        count += 1
         img_pil.save(os.path.join(host_out, new_name))
-        # next
-        previous_img = newest_img
+
 
 finally:
     clean_pid()

@@ -54,7 +54,6 @@ def main(host, user):
         
         # resize to have smaller transfer
         x, y = frame.size
-        print(x, y)
         if x > y:
             y_target = resize_size
             x_target = int(x / y * y_target)
@@ -73,12 +72,10 @@ def main(host, user):
             count += 1
             img_path = os.path.join(client_out, img_name)
             target_path = os.path.join(host_in, img_name)
-            print("Copy from ", img_path, "to", target_path)
-            print("Copy from ", total_path + img_path, "to", total_path + target_path)
             #np.save(img_path, rgb_frame)
             frame.save(img_path)
            
-            subprocess.run(['scp', total_path + img_path, host_scp_path + total_path + target_path])
+            subprocess.run(['scp', img_path, host_scp_path + total_path + target_path])
             # display img
             rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             cv2.imshow("Input", rgb_frame)
@@ -92,7 +89,7 @@ def main(host, user):
                 new_img_name = str(newest) + ".png"
                 host_path = os.path.join(host_out, new_img_name)
                 client_path = os.path.join(client_in, new_img_name)
-                subprocess.run(['scp', total_path + host_path, host_scp_path + total_path + client_path])
+                subprocess.run(['scp', host_scp_path + total_path + host_path, client_path])
                 # load processed img
                 processed_img = Image.open(client_path)
                 # show processed img
