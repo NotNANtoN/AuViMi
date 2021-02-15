@@ -37,7 +37,7 @@ try:
     count = 0
     while True:
         img_names = os.listdir(host_in)
-        newest_img = max([int(name[-4]) for name in img_names]) if len(img_names) > 0 else 0
+        newest_img = max([int(name[:-4]) for name in img_names]) if len(img_names) > 0 else 0
         
         # maybe update target img
         if newest_img != previous_img:
