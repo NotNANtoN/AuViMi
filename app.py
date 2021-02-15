@@ -25,9 +25,9 @@ def main(host):
     if not exists:
         subprocess.run(['ssh', host, 'git', 'clone', 'git@github.com:NotNANtoN/AuViMi.git'])
     else:
-        subprocess.run(['ssh', host, 'cd AuViMi', ';', 'git', 'pull'])
+        subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
     # start host process
-    subprocess.Popen(['ssh', host, 'python3', 'AuViMi/host.py'])
+    subprocess.Popen(['ssh', host, 'cd AuViMi;', 'python3', 'AuViMi/host.py'])
 
     cap = cv2.VideoCapture(0)
     if (cap.isOpened() == False):
