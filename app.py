@@ -82,7 +82,7 @@ def main(host):
             # check get list of imgs
             process_out = subprocess.run(['ssh', host, 'ls ' + host_out], stdout=subprocess.PIPE)
             all_host_outs = process_out.stdout.decode("utf-8").split("\n")[:-1]
-            newest = max([int(name[-4]) for name in all_host_outs])
+            newest = max([int(name[-4]) for name in all_host_outs]) if len(all_host_outs) > 0 else 0
             if newest > previous:
                 new_img_name = str(newest) + ".png"
                 host_path = os.path.join(host_out, new_img_name)
