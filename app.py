@@ -103,14 +103,14 @@ def main(host, user):
                     cv2.imshow("Mirror", processed_img)
                     previous = newest
             elif approach == 2:
-                new_img_name = "new.png"
-                local_img_name = str(count) + ".png"
+                new_img_name = "new.npy"
+                local_img_name = str(count) + ".npy"
                 host_path = os.path.join(host_out, new_img_name)
                 client_path = os.path.join(client_in, local_img_name)
                 
-                if os.path.exists(client_path):
+                if os.path.exists(host_path):
                     # load processed img
-                    processed_img = np.array(Image.open(host_path))
+                    processed_img = np.load(host_path)
                     # show processed img
                     cv2.imshow("Mirror", processed_img)
             

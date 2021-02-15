@@ -48,10 +48,10 @@ try:
         # train one step
         img_tensor, loss = model.train_step(0, count)
         # save new img
-        img_pil = img_tensor.cpu().squeeze().numpy()
+        img_np = img_tensor.cpu().squeeze().numpy()
         count += 1
-        np.save(os.path.join(host_out, "new.png"))
-        np.save(os.path.join(host_out, str(count) + ".png"))
+        np.save(os.path.join(host_out, "new.npy"), img_np)
+        np.save(os.path.join(host_out, str(count) + ".npy"), img_np)
 
 
 finally:
