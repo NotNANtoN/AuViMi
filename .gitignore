@@ -1,3 +1,9 @@
+# folders
+client_in/
+client_out/
+host_in/
+host_out/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
