@@ -50,8 +50,8 @@ try:
         # save new img
         img_pil = img_tensor.cpu().squeeze().numpy()
         count += 1
-        np.save(os.path.join(host_out, "new.png")
-        np.save(os.path.join(host_out, str(count) + ".png")
+        np.save(os.path.join(host_out, "new.png"))
+        np.save(os.path.join(host_out, str(count) + ".png"))
 
 
 finally:
