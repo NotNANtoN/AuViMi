@@ -47,7 +47,7 @@ try:
         # train one step
         img_tensor, loss = model.train_step(0, count)
         # save new img
-        img_pil = to_pil(img_tensor.cpu())
+        img_pil = to_pil(img_tensor.cpu().squeeze())
         new_name = str(count) + ".png"
         count += 1
         img_pil.save(os.path.join(host_out, new_name))
