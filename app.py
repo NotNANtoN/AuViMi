@@ -27,7 +27,7 @@ def main(host):
     else:
         subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
     # start host process
-    subprocess.Popen(['ssh', host, 'cd AuViMi;', 'python3', 'AuViMi/host.py'])
+    subprocess.Popen(['ssh', host, 'cd AuViMi;', 'python3', 'host.py'])
 
     cap = cv2.VideoCapture(0)
     if (cap.isOpened() == False):
