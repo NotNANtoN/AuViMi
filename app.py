@@ -46,7 +46,7 @@ def main(host):
         if success:
             # move img over:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img_name = time_stamp() + ".png"
+            img_name = time_stamp()
             img_path = os.path.join(client_out, img_name)
             target_path = os.path.join(repo_name, host_in, img_name)
             np.save(img_path, rgb_frame)
