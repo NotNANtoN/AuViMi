@@ -4,22 +4,24 @@ import pipes
 
 import numpy as np
 import cv2
+import torchvision
 from PIL import Image
+
 
 from utils import time_stamp
 
 def main(host):
     repo_name = "AuViMi"
-    client_out = "client_out"
-    client_int = "client_in"
-    host_in = "host_in"
-    host_processed = "host_out"
+    client_out = os.path.join("~", repo_name, "client_out")
+    client_in = os.path.join("~", repo_name, "client_in")
+    host_in = os.path.join("~", repo_name, "host_in")
+    host_out = os.path.join("~", repo_name, "host_out")
     host_python_path = "/home/anton/anaconda3/bin/python"
     
     resize_size = 224
 
     os.makedirs(client_out, exist_ok=True)
-    os.makedirs(client_int, exist_ok=True)
+    os.makedirs(client_in, exist_ok=True)
 
 
     # make sure that repo is cloned on host
@@ -37,12 +39,16 @@ def main(host):
         cap.release()
         cap = cv2.VideoCapture(0)
 
+    to_pil = torchvision.transforms.ToPILImage()
 
     count = 0
     while(cap.isOpened()):
-        success, frame = cap.read()
+        success, frame_np = cap.read()
+        frame = to_pil(frame_np).convert("RGB")
+        
+        
         # resize to have smaller transfer
-        x, y = frame.shape()
+        x, y = frame.size
         print(x, y)
         if x > y:
             y_target = resize_size
@@ -58,7 +64,7 @@ def main(host):
 
         if success:
             # move img over:
-            img_name = "new" #str(count)
+            img_name = "new.png" #str(count)
             count += 1
             img_path = os.path.join(client_out, img_name)
             target_path = os.path.join('~', repo_name, host_in, img_name)
@@ -66,14 +72,15 @@ def main(host):
             frame.save(img_path)
             subprocess.run(['scp', host, img_path, target_path])
             # display img
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             cv2.imshow("Input", rgb_frame)
             
             # get processed img (if there is a new one):
             host_path = os.path.join(host_out, "new.png")
             received_img_name = str(count) + ".png"
             client_path = os.path.join(client_in, received_img_name)
-            subprocess.run(['scp', host, host_path, client_path])
+            result = subprocess.run(['scp', host, host_path, client_path])
+            print("result: ", result)
             # load processed img
             processed_img = Image.open(client_path)
             # show processed img
