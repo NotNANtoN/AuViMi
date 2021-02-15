@@ -15,8 +15,9 @@ def kill_old_process(create_new=False):
         with open(pidfile, 'r') as f:
             old_pid = f.read()
         print("Old PID: ", old_pid)
-        os.kill(old_pid, signal.SIGTERM)
+        os.kill(int(old_pid), signal.SIGTERM)
         time.sleep(2)
     if create_new:
         with open(pidfile, 'w') as f:
             f.write(pid)
+

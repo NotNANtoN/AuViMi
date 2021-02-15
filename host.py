@@ -5,7 +5,7 @@ import time
 from utils import time_stamp, kill_old_process
 
 sys.path.append("../deepdaze/deep_daze_repo/deep_daze")
-print(sys.path.list())
+print(sys.path)
 from deep_daze.deep_daze import Imagine
 
 
