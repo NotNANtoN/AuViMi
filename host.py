@@ -41,7 +41,8 @@ try:
         
         # maybe update target img
         if newest_img != previous_img:
-            model.set_clip_encoding(img=newest_img)
+            png_path = os.path.join(host_in, str(newest_img) + ".png")
+            model.set_clip_encoding(img=png_path)
             previous_img = newest_img
         # train one step
         img_tensor, loss = model.train_step()
