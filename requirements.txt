@@ -1,3 +1,6 @@
-streamlit
-deep_daze
+torchvision
 torch
+deep_daze >= 0.6.0
+joblib 
+cv2
+PIL

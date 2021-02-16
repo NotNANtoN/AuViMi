@@ -26,7 +26,7 @@ os.makedirs(host_out, exist_ok=True)
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
-    train_steps = 5
+    train_steps = 1
     model = Imagine(
                 epochs = 12,
                 image_width=256,
@@ -40,6 +40,12 @@ try:
                 #open_folder=True,
                 #start_image_train_iters=200,
                )
+
+    # delete previous imgs
+    for f in os.listdir(host_in):
+        os.unlink(os.path.join(host_in, f))
+    for f in os.listdir(host_out):
+        os.unlink(os.path.join(host_out, f))
 
     previous_img = None
     newest_img = None
