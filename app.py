@@ -74,9 +74,10 @@ def main(host, user):
     
     while(cap.isOpened()):
         start_loop_time = time.time()
-        success, frame_np = cap.read()
-        frame = to_pil(frame_np).convert("RGB")
+        success, frame_cv2 = cap.read()
         
+        frame_np = cv2.cvtColor(frame_cv2, cv2.COLOR_BGR2RGB)
+        frame = to_pil(frame_np).convert("RGB")
         
         # resize to have smaller transfer
         x, y = frame.size
@@ -103,8 +104,8 @@ def main(host, user):
            
             subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
             # display img
-            rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
-            cv2.imshow("Input", rgb_frame)
+            #rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
+            cv2.imshow("Input", frame_cv2)
             
             # get processed img (if there is a new one):
             approach = 2
@@ -126,23 +127,24 @@ def main(host, user):
                     cv2.imshow("Mirror", processed_img)
                     previous = newest
             elif approach == 2:
-                new_img_name = "new.npy"
-                local_img_name = str(count) + ".npy"
+                new_img_name = "new.jpgnpy"
+                local_img_name = str(count) + ".jpg"
                 host_path = os.path.join(host_out, new_img_name)
                 client_path = os.path.join(client_in, new_img_name)
                 
                 if os.path.exists(client_path):
                     # load processed img
                     try:
-                        img = np.load(client_path) * 255
+                        img = np.array(Image.open(client_path))
+                        #img = np.float32(np.load(client_path))
                         new_hash = joblib.hash(img)
                         if new_hash != old_hash:
                             old_hash = new_hash
                             print("Seconds between trainings: ", time.time() - new_img_time)
                             new_img_time = time.time()
                         # show processed img
-                        print(img.min(), img.max(), img.mean())
-                        cv2.imshow("Mirror", np.uint8(img))
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                        cv2.imshow("Mirror", img)
                     except ValueError:
                         pass
             

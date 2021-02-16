@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 import torchvision
+from PIL import Image
 
 from utils import time_stamp, kill_old_process, clean_pid
 
@@ -58,10 +59,13 @@ try:
         img_tensor, loss = model.train_step(0, count)
 
         # save new img
-        img_np = img_tensor.cpu().detach().squeeze().permute(1, 2, 0).numpy()
+        img_np = img_tensor.cpu().detach().squeeze().float().permute(1, 2, 0).numpy()
+        img_pil = Image.fromarray(img_np)
         count += 1
-        np.save(os.path.join(host_out, "new.npy"), img_np)
-        np.save(os.path.join(host_out, str(count) + ".npy"), img_np)
+        img_pil.save(os.path.join(host_out, "new.jpg"), quality=95, subsampling=0)
+        img_pil.save(os.path.join(host_out, str(count) + ".jpg"), quality=95, subsampling=0)
+        #np.save(os.path.join(host_out, "new.npy"), img_np)
+        #np.save(os.path.join(host_out, str(count) + ".npy"), img_np)
         
 
 
