@@ -127,7 +127,7 @@ def main(host, user):
                     cv2.imshow("Mirror", processed_img)
                     previous = newest
             elif approach == 2:
-                new_img_name = "new.jpgnpy"
+                new_img_name = "new.jpg"
                 local_img_name = str(count) + ".jpg"
                 host_path = os.path.join(host_out, new_img_name)
                 client_path = os.path.join(client_in, new_img_name)

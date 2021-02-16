@@ -59,7 +59,7 @@ try:
         img_tensor, loss = model.train_step(0, count)
 
         # save new img
-        img_np = img_tensor.cpu().detach().squeeze().float().permute(1, 2, 0).numpy()
+        img_np = np.float32(img_tensor.cpu().detach().squeeze().permute(1, 2, 0).numpy())
         img_pil = Image.fromarray(img_np)
         count += 1
         img_pil.save(os.path.join(host_out, "new.jpg"), quality=95, subsampling=0)
