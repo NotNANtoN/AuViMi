@@ -27,9 +27,10 @@ try:
     
     model = Imagine(
                 epochs = 12,
-                image_width=128,
+                image_width=256,
                 gradient_accumulate_every=1,
                 batch_size=8,
+                num_layers=32,
                 #save_progress=True,
                 #open_folder=True,
                 #start_image_train_iters=200,
