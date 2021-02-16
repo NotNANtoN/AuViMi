@@ -31,7 +31,7 @@ try:
                 gradient_accumulate_every=1,
                 batch_size=8,
                 num_layers=40,
-                learning_rate=3e-3
+                lr=3e-3
                 
                 #save_progress=True,
                 #open_folder=True,
