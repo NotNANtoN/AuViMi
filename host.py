@@ -2,6 +2,7 @@ import os
 import sys
 import time
 
+import numpy as np
 import torchvision
 
 from utils import time_stamp, kill_old_process, clean_pid
