@@ -106,13 +106,16 @@ def main(host, user):
                 new_img_name = "new.npy"
                 local_img_name = str(count) + ".npy"
                 host_path = os.path.join(host_out, new_img_name)
-                client_path = os.path.join(client_in, local_img_name)
+                client_path = os.path.join(client_in, new_img_name)
                 
-                if os.path.exists(host_path):
+                if os.path.exists(client_path):
                     # load processed img
-                    processed_img = np.load(host_path)
-                    # show processed img
-                    cv2.imshow("Mirror", processed_img)
+                    try:
+                        processed_img = np.load(client_path)
+                        # show processed img
+                        cv2.imshow("Mirror", processed_img)
+                    except ValueError:
+                        pass
             
                 # load new image asynchronously
                 subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
