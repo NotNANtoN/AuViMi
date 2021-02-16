@@ -145,7 +145,7 @@ def main(host, user):
                         # show processed img
                         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
                         cv2.imshow("Mirror", img)
-                    except ValueError:
+                    except (ValueError, OSError):
                         pass
             
                 # load new image asynchronously

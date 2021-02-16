@@ -26,6 +26,7 @@ os.makedirs(host_out, exist_ok=True)
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
+    train_steps = 5
     model = Imagine(
                 epochs = 12,
                 image_width=256,
@@ -54,9 +55,10 @@ try:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
             model.set_clip_encoding(img=img_path)
             previous_img = newest_img
-        # train one step
+        # train
         start_train_time = time.time()
-        img_tensor, loss = model.train_step(0, count)
+        for _ in range(train_steps):
+            img_tensor, loss = model.train_step(0, count)
 
         # save new img
         img_np = np.uint8(img_tensor.cpu().detach().squeeze().permute(1, 2, 0).numpy() * 255)
