@@ -2,6 +2,10 @@ import os
 import subprocess
 import pipes
 import time
+import sys
+import threading
+
+import joblib
 
 import numpy as np
 import cv2
@@ -10,6 +14,13 @@ from PIL import Image
 
 
 from utils import time_stamp
+
+
+def output_reader(proc):
+    for line in iter(proc.stdout.readline, ''):
+        print(line.decode('utf-8'), end='')
+        #print('got line: {0}'.format(line.decode('utf-8')), end='')
+
 
 
 def main(host, user):
@@ -36,7 +47,15 @@ def main(host, user):
     else:
         subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
     # start host process
-    subprocess.Popen(['ssh', host, 'cd AuViMi;', host_python_path, 'host.py'])
+    host_process = subprocess.Popen(['ssh', host, 'cd AuViMi;', host_python_path, 'host.py'], stdout=subprocess.PIPE)
+    
+    #t = threading.Thread(target=output_reader, args=(host_process,))
+    #t.start()
+    #def get_output(host_process):
+    #    for stdout_line in iter(host_process.stdout.readline, ""):
+    #        yield stdout_line 
+   
+    #host_stdout_iterator = get_output(host_process)
 
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # we only want to store the newsest img
@@ -49,6 +68,10 @@ def main(host, user):
     newest = 0
     previous = 0
     count = 0
+    
+    old_hash = None
+    new_img_time = time.time()
+    
     while(cap.isOpened()):
         start_loop_time = time.time()
         success, frame_np = cap.read()
@@ -112,6 +135,11 @@ def main(host, user):
                     # load processed img
                     try:
                         processed_img = np.load(client_path)
+                        new_hash = joblib.hash(processed_img)
+                        if new_hash != old_hash:
+                            old_hash = new_hash
+                            print("Seconds between trainings: ", time.time() - new_img_time)
+                            new_img_time = time.time()
                         # show processed img
                         cv2.imshow("Mirror", np.uint8(processed_img * 255))
                     except ValueError:
@@ -122,8 +150,17 @@ def main(host, user):
         else:
             break
             
-        print("Time per loop: ", time.time() - start_loop_time)
-              
+        print("Time per client loop: ", time.time() - start_loop_time)
+        
+        #for line in host_stdout_iterator:
+        #    print(line)
+        #host_out = next(host_stdout_iterator)
+        #print(host_out)
+        
+        
+        #print(get_stdout(host_process))
+           
+    #t.join()
     cap.release()
     
     
