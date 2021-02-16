@@ -113,7 +113,7 @@ def main(host, user):
                     try:
                         processed_img = np.load(client_path)
                         # show processed img
-                        cv2.imshow("Mirror", processed_img)
+                        cv2.imshow("Mirror", np.uint8(processed_img * 255))
                     except ValueError:
                         pass
             

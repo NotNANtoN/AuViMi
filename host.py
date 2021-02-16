@@ -37,6 +37,7 @@ try:
     newest_img = None
     count = 0
     while True:
+        host_loop_time = time.time()
         img_names = os.listdir(host_in)
         img_names = [name for name in img_names if name.endswith(".png")]
         newest_img = max([int(name[:-4]) for name in img_names]) if len(img_names) > 0 else 0
@@ -47,12 +48,16 @@ try:
             model.set_clip_encoding(img=png_path)
             previous_img = newest_img
         # train one step
+        start_train_time = time.time()
         img_tensor, loss = model.train_step(0, count)
+        print("Time per train: ", time.time() - start_train_time)
         # save new img
         img_np = img_tensor.cpu().detach().squeeze().permute(1, 2, 0).numpy()
         count += 1
         np.save(os.path.join(host_out, "new.npy"), img_np)
         np.save(os.path.join(host_out, str(count) + ".npy"), img_np)
+        
+        print("Host total loop time: ", time.time() - host_loop_time)
 
 
 finally:
