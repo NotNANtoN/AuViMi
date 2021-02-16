@@ -45,25 +45,25 @@ try:
     while True:
         host_loop_time = time.time()
         img_names = os.listdir(host_in)
-        img_names = [name for name in img_names if name.endswith(".png")]
+        img_names = [name for name in img_names if name.endswith(".jpg")]
         newest_img = max([int(name[:-4]) for name in img_names]) if len(img_names) > 0 else 0
         
         # maybe update target img
         if newest_img != previous_img:
-            png_path = os.path.join(host_in, str(newest_img) + ".png")
-            model.set_clip_encoding(img=png_path)
+            img_path = os.path.join(host_in, str(newest_img) + ".jpg")
+            model.set_clip_encoding(img=img_path)
             previous_img = newest_img
         # train one step
         start_train_time = time.time()
         img_tensor, loss = model.train_step(0, count)
-        print("Time per train: ", time.time() - start_train_time)
+
         # save new img
         img_np = img_tensor.cpu().detach().squeeze().permute(1, 2, 0).numpy()
         count += 1
         np.save(os.path.join(host_out, "new.npy"), img_np)
         np.save(os.path.join(host_out, str(count) + ".npy"), img_np)
         
-        print("Host total loop time: ", time.time() - host_loop_time)
+
 
 
 finally:

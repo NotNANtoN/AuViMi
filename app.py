@@ -94,12 +94,12 @@ def main(host, user):
 
         if success:
             # move img over:
-            img_name = str(count) + ".png"
+            img_name = str(count) + ".jpg"
             count += 1
             img_path = os.path.join(client_out, img_name)
             target_path = os.path.join(host_in, img_name)
             #np.save(img_path, rgb_frame)
-            frame.save(img_path)
+            frame.save(img_path, quality=95, subsampling=0)
            
             subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
             # display img
