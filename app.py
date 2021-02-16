@@ -134,14 +134,15 @@ def main(host, user):
                 if os.path.exists(client_path):
                     # load processed img
                     try:
-                        processed_img = np.load(client_path)
-                        new_hash = joblib.hash(processed_img)
+                        img = np.load(client_path) * 255
+                        new_hash = joblib.hash(img)
                         if new_hash != old_hash:
                             old_hash = new_hash
                             print("Seconds between trainings: ", time.time() - new_img_time)
                             new_img_time = time.time()
                         # show processed img
-                        cv2.imshow("Mirror", np.uint8(processed_img * 255))
+                        print(img.min(), img.max(), img.mean())
+                        cv2.imshow("Mirror", np.uint8(img))
                     except ValueError:
                         pass
             
