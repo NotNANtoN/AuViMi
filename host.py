@@ -27,10 +27,11 @@ try:
     
     model = Imagine(
                 epochs = 12,
-                image_width=512,
+                image_width=256,
                 gradient_accumulate_every=1,
                 batch_size=8,
-                num_layers=32,
+                num_layers=40,
+                learning_rate=3e-3
                 
                 #save_progress=True,
                 #open_folder=True,
