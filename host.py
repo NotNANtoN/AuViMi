@@ -1,6 +1,8 @@
 import os
 import sys
 import time
+import shutil
+import argparse
 
 import numpy as np
 import torchvision
@@ -11,6 +13,14 @@ from utils import time_stamp, kill_old_process, clean_pid
 sys.path.append("../deepdaze/")
 from deep_daze_repo.deep_daze.deep_daze import Imagine
 
+
+def clean_host_folders():
+    shutil.rmtree('host_in')
+    shutil.rmtree('host_out')
+     
+    
+def timestr():
+    return time.strftime("%x", time.gmtime())
     
 
 kill_old_process(create_new=True)
@@ -23,16 +33,24 @@ os.makedirs(host_in, exist_ok=True)
 os.makedirs(host_out, exist_ok=True)
 
 
+parser = arparse.ArgumentParser()
+parser.add_argument("--size", type=int, default=128)
+parser.add_argument("--epochs", type=int, default=12)
+parser.add_argument("--gradient_accumulate_every", type=int, default=1)
+parser.add_argument("--batch_size", type=int, default=8)
+parser.add_argument("--num_layers", type=int, default=44)
+args = parser.parse_args()
+
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
     train_steps = 1
     model = Imagine(
-                epochs = 12,
-                image_width=64,
-                gradient_accumulate_every=1,
-                batch_size=8,
-                num_layers=40,
+                epochs = args.epochs,
+                image_width=args.size,
+                gradient_accumulate_every=args.gradient_accumulate_every,
+                batch_size=args.batch_size,
+                num_layers=args.num_layers,
                 
                 #lr=3e-3   # 3e-3 is unstable
                 
@@ -76,9 +94,17 @@ try:
         #np.save(os.path.join(host_out, str(count) + ".npy"), img_np)
         
 
-
-
 finally:
+    # make videos
+    folder = "results"
+    os.makedirs(folder, exist_ok=True)
+    time_now = timestr()
+    path = os.path.join(folder, time_now)
+    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
+    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
+    # clear folders
+    clean_folders()
+    # kill process
     clean_pid()
 
 

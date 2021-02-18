@@ -23,7 +23,7 @@ def output_reader(proc):
 
 
 
-def main(host, user):
+def main(host, user, args):
     repo_name = "AuViMi"
     total_path = "~/AuViMi/"
     client_out = os.path.join("client_out")
@@ -46,8 +46,15 @@ def main(host, user):
         subprocess.run(['ssh', host, 'git', 'clone', 'git@github.com:NotNANtoN/AuViMi.git'])
     else:
         subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
+
     # start host process
-    host_process = subprocess.Popen(['ssh', host, 'cd AuViMi;', host_python_path, 'host.py'], stdout=subprocess.PIPE)
+    commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
+    args_cli = []
+    args = vars(args)
+    for key in args:
+        args_cli.append("--" + key)
+        args_cli.append(args[key])
+    host_process = subprocess.Popen(commands + args_cli, stdout=subprocess.PIPE)
     
     #t = threading.Thread(target=output_reader, args=(host_process,))
     #t.start()
@@ -75,6 +82,7 @@ def main(host, user):
     while(cap.isOpened()):
         start_loop_time = time.time()
         success, frame_cv2 = cap.read()
+        
         
         frame_np = cv2.cvtColor(frame_cv2, cv2.COLOR_BGR2RGB)
         frame = to_pil(frame_np).convert("RGB")
@@ -122,9 +130,11 @@ def main(host, user):
                     client_path = os.path.join(client_in, new_img_name)
                     subprocess.run(['rsync', host_scp_path + total_path + host_path, client_path])
                     # load processed img
+                    size = 512
                     processed_img = np.array(Image.open(client_path))
+                    mirror_img = F.interpolate(torch.tensor(processed_img), (size, size), mode='bilinear', align_corners=False)
                     # show processed img
-                    cv2.imshow("Mirror", processed_img)
+                    cv2.imshow("Mirror", mirror_img)
                     previous = newest
             elif approach == 2:
                 new_img_name = "new.jpg"
@@ -171,8 +181,17 @@ def main(host, user):
 if __name__ == "__main__":
     host = "abakus.ddnss.de"
     user = "anton"
+    
+    parser = arparse.ArgumentParser()
+    parser.add_argument("--size", type=int, default=128)
+    parser.add_argument("--epochs", type=int, default=12)
+    parser.add_argument("--gradient_accumulate_every", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--num_layers", type=int, default=44)
+    args = parser.parse_args()
+
     try:
-        main(host, user)
+        main(host, user, args)
     finally:
         subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
     
