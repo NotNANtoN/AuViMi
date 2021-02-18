@@ -4,7 +4,7 @@ import pipes
 import time
 import sys
 import threading
-
+import argparse
 import joblib
 
 import numpy as np
@@ -53,7 +53,7 @@ def main(host, user, args):
     args = vars(args)
     for key in args:
         args_cli.append("--" + key)
-        args_cli.append(args[key])
+        args_cli.append(str(args[key]))
     host_process = subprocess.Popen(commands + args_cli, stdout=subprocess.PIPE)
     
     #t = threading.Thread(target=output_reader, args=(host_process,))
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     host = "abakus.ddnss.de"
     user = "anton"
     
-    parser = arparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument("--size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=12)
     parser.add_argument("--gradient_accumulate_every", type=int, default=1)

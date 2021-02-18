@@ -33,7 +33,7 @@ os.makedirs(host_in, exist_ok=True)
 os.makedirs(host_out, exist_ok=True)
 
 
-parser = arparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 parser.add_argument("--size", type=int, default=128)
 parser.add_argument("--epochs", type=int, default=12)
 parser.add_argument("--gradient_accumulate_every", type=int, default=1)
