@@ -11,6 +11,8 @@ import numpy as np
 import cv2
 import torchvision
 from PIL import Image
+import torch
+import torch.nn.functional as F
 
 
 from utils import time_stamp
@@ -122,6 +124,9 @@ def main(host, user, args):
             host_path = os.path.join(host_out, new_img_name)
             client_path = os.path.join(client_in, new_img_name)
             
+            # load new image asynchronously
+            subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
+            
             if os.path.exists(client_path):
                 # load processed img
                 try:
@@ -132,14 +137,18 @@ def main(host, user, args):
                         old_hash = new_hash
                         print("Seconds between trainings: ", time.time() - new_img_time)
                         new_img_time = time.time()
+                    # resize to 512
+                    size = 512
+                    print(img.shape)
+                    img = F.interpolate(torch.tensor(img), (size, size), mode='bilinear', align_corners=False).numpy()
+                    print(img.shape
                     # show processed img
                     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
                     cv2.imshow("Mirror", img)
                 except (ValueError, OSError):
                     pass
         
-            # load new image asynchronously
-            subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
+            
         else:
             break
             
