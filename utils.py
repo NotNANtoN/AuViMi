@@ -16,7 +16,7 @@ def kill_old_process(create_new=False):
             old_pid = f.read()
         print("Old PID: ", old_pid)
         try:
-            os.kill(int(old_pid), signal.SIGTERM)
+            os.kill(int(old_pid), signal.SIGINT)
         except ProcessLookupError:
             pass
         os.unlink(pidfile)

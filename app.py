@@ -130,21 +130,19 @@ def main(host, user, args):
             if os.path.exists(client_path):
                 # load processed img
                 try:
-                    img = np.array(Image.open(client_path))
-                    #img = np.float32(np.load(client_path))
-                    new_hash = joblib.hash(img)
+                    pil_img_small = Image.open(client_path)
+                    np_img_small = np.array(pil_img_small)
+                    pil_img_large = pil_img_small.resize((512, 512))
+                    np_img_large = np.array(pil_img_large)
+
+                    new_hash = joblib.hash(np_img_small)
                     if new_hash != old_hash:
                         old_hash = new_hash
                         print("Seconds between trainings: ", time.time() - new_img_time)
                         new_img_time = time.time()
-                    # resize to 512
-                    size = 512
-                    print(img.shape)
-                    img = F.interpolate(torch.tensor(img), (size, size), mode='bilinear', align_corners=False).numpy()
-                    print(img.shape
                     # show processed img
-                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                    cv2.imshow("Mirror", img)
+                    img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)
+                    cv2.imshow("Mirror", np_img_large)
                 except (ValueError, OSError):
                     pass
         
@@ -164,7 +162,7 @@ def main(host, user, args):
            
     #t.join()
     cap.release()
-    
+    return host_process
     
     
 if __name__ == "__main__":
@@ -172,7 +170,7 @@ if __name__ == "__main__":
     user = "anton"
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--size", type=int, default=128)
+    parser.add_argument("--size", type=int, default=256)
     parser.add_argument("--epochs", type=int, default=12)
     parser.add_argument("--gradient_accumulate_every", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=8)
@@ -180,7 +178,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        main(host, user, args)
+        host_process = main(host, user, args)
+        host_process.send_signal(signal.SIGINT)
     finally:
         subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
     
