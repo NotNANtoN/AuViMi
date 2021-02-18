@@ -29,7 +29,7 @@ try:
     train_steps = 1
     model = Imagine(
                 epochs = 12,
-                image_width=256,
+                image_width=64,
                 gradient_accumulate_every=1,
                 batch_size=8,
                 num_layers=40,
