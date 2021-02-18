@@ -64,8 +64,9 @@ def main(host, user, args):
    
     #host_stdout_iterator = get_output(host_process)
 
+    # init webcam
     cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # we only want to store the newsest img
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # we only want to store the newest img
     if (cap.isOpened() == False):
         cap.release()
         cap = cv2.VideoCapture(0)
@@ -106,60 +107,39 @@ def main(host, user, args):
             img_name = str(count) + ".jpg"
             count += 1
             img_path = os.path.join(client_out, img_name)
-            target_path = os.path.join(host_in, img_name)
-            #np.save(img_path, rgb_frame)
+            # save img
             frame.save(img_path, quality=95, subsampling=0)
-           
+            # send to host
+            target_path = os.path.join(host_in, img_name)
             subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
             # display img
             #rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             cv2.imshow("Input", frame_cv2)
             
             # get processed img (if there is a new one):
-            approach = 2
+            new_img_name = "new.jpg"
+            local_img_name = str(count) + ".jpg"
+            host_path = os.path.join(host_out, new_img_name)
+            client_path = os.path.join(client_in, new_img_name)
             
-            if approach == 1:
-                # check get list of imgs
-                process_out = subprocess.run(['ssh', host, 'ls ' + total_path + host_out], stdout=subprocess.PIPE)
-                all_host_outs = process_out.stdout.decode("utf-8").split("\n")[:-1]
-                all_host_outs = [name for name in all_host_outs if name.endswith(".png")]
-                newest = max([int(name[:-4]) for name in all_host_outs]) if len(all_host_outs) > 0 else 0
-                if newest > previous:
-                    new_img_name = str(newest) + ".png"
-                    host_path = os.path.join(host_out, new_img_name)
-                    client_path = os.path.join(client_in, new_img_name)
-                    subprocess.run(['rsync', host_scp_path + total_path + host_path, client_path])
-                    # load processed img
-                    size = 512
-                    processed_img = np.array(Image.open(client_path))
-                    mirror_img = F.interpolate(torch.tensor(processed_img), (size, size), mode='bilinear', align_corners=False)
+            if os.path.exists(client_path):
+                # load processed img
+                try:
+                    img = np.array(Image.open(client_path))
+                    #img = np.float32(np.load(client_path))
+                    new_hash = joblib.hash(img)
+                    if new_hash != old_hash:
+                        old_hash = new_hash
+                        print("Seconds between trainings: ", time.time() - new_img_time)
+                        new_img_time = time.time()
                     # show processed img
-                    cv2.imshow("Mirror", mirror_img)
-                    previous = newest
-            elif approach == 2:
-                new_img_name = "new.jpg"
-                local_img_name = str(count) + ".jpg"
-                host_path = os.path.join(host_out, new_img_name)
-                client_path = os.path.join(client_in, new_img_name)
-                
-                if os.path.exists(client_path):
-                    # load processed img
-                    try:
-                        img = np.array(Image.open(client_path))
-                        #img = np.float32(np.load(client_path))
-                        new_hash = joblib.hash(img)
-                        if new_hash != old_hash:
-                            old_hash = new_hash
-                            print("Seconds between trainings: ", time.time() - new_img_time)
-                            new_img_time = time.time()
-                        # show processed img
-                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                        cv2.imshow("Mirror", img)
-                    except (ValueError, OSError):
-                        pass
-            
-                # load new image asynchronously
-                subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
+                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                    cv2.imshow("Mirror", img)
+                except (ValueError, OSError):
+                    pass
+        
+            # load new image asynchronously
+            subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
         else:
             break
             

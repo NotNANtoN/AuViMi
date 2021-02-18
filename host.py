@@ -3,6 +3,7 @@ import sys
 import time
 import shutil
 import argparse
+import subprocess
 
 import numpy as np
 import torchvision
@@ -53,26 +54,17 @@ try:
                 num_layers=args.num_layers,
                 
                 #lr=3e-3   # 3e-3 is unstable
-                
-                #save_progress=True,
-                #open_folder=True,
+                open_folder=False,
                 #start_image_train_iters=200,
                )
-
-    # delete previous imgs
-    for f in os.listdir(host_in):
-        os.unlink(os.path.join(host_in, f))
-    for f in os.listdir(host_out):
-        os.unlink(os.path.join(host_out, f))
 
     previous_img = None
     newest_img = None
     count = 0
     while True:
         host_loop_time = time.time()
-        img_names = os.listdir(host_in)
-        img_names = [name for name in img_names if name.endswith(".jpg")]
-        newest_img = max([int(name[:-4]) for name in img_names]) if len(img_names) > 0 else 0
+        img_names = [name[:-4] for name in os.listdir(host_in) if name.endswith(".jpg")]
+        newest_img = max(img_names, key=lambda x: int(x)) if len(img_names) > 0 else 0
         
         # maybe update target img
         if newest_img != previous_img:
