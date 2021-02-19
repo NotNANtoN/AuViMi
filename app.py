@@ -4,8 +4,8 @@ import pipes
 import time
 import sys
 import threading
-import argparse
 import joblib
+import signal
 
 import numpy as np
 import cv2
@@ -15,7 +15,7 @@ import torch
 import torch.nn.functional as F
 
 
-from utils import time_stamp
+from utils import time_stamp, get_args
 
 
 def output_reader(proc):
@@ -165,17 +165,11 @@ def main(host, user, args):
     return host_process
     
     
-if __name__ == "__main__":
+if __name__ == "__main__":  
+    args = get_args()
+    
     host = "abakus.ddnss.de"
     user = "anton"
-    
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--size", type=int, default=256)
-    parser.add_argument("--epochs", type=int, default=12)
-    parser.add_argument("--gradient_accumulate_every", type=int, default=1)
-    parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--num_layers", type=int, default=44)
-    args = parser.parse_args()
 
     try:
         host_process = main(host, user, args)

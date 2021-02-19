@@ -9,7 +9,7 @@ import numpy as np
 import torchvision
 from PIL import Image
 
-from utils import time_stamp, kill_old_process, clean_pid
+from utils import time_stamp, kill_old_process, clean_pid, get_args
 
 sys.path.append("../deepdaze/")
 from deep_daze_repo.deep_daze.deep_daze import Imagine
@@ -34,13 +34,7 @@ os.makedirs(host_in, exist_ok=True)
 os.makedirs(host_out, exist_ok=True)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--size", type=int, default=128)
-parser.add_argument("--epochs", type=int, default=12)
-parser.add_argument("--gradient_accumulate_every", type=int, default=1)
-parser.add_argument("--batch_size", type=int, default=8)
-parser.add_argument("--num_layers", type=int, default=44)
-args = parser.parse_args()
+args = get_args()
 
 try:
     to_pil = torchvision.transforms.ToPILImage()
@@ -58,6 +52,9 @@ try:
                 #start_image_train_iters=200,
                )
 
+    text_encoding = None
+    if args.text is not None and args.text != "":
+        text_encoding = model.create_text_encoding(args.text)
     previous_img = None
     newest_img = None
     count = 0
@@ -69,7 +66,9 @@ try:
         # maybe update target img
         if newest_img != previous_img:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
-            model.set_clip_encoding(img=img_path)
+            img_encoding = model.create_img_encoding(img_path)
+            clip_encoding = img_encoding if text_encoding is None else (img_encoding + text_encoding) / 2
+            model.set_clip_encoding(encoding=clip_encoding)
             previous_img = newest_img
         # train
         start_train_time = time.time()
