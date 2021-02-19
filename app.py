@@ -110,13 +110,15 @@ def main(host, user, args):
 
         if success:
             # move img over:
-            img_name = str(count) + ".jpg"
+            
+            img_name_client = "new.jpg"  
+            img_name_host = str(count) + ".jpg"
             count += 1
-            img_path = os.path.join(client_out, img_name)
+            img_path = os.path.join(client_out, img_name_client)
             # save img
             frame.save(img_path, quality=95, subsampling=0)
             # send to host
-            target_path = os.path.join(host_in, img_name)
+            target_path = os.path.join(host_in, img_name_host)
             subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
             # display img
             #rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)

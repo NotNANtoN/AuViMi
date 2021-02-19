@@ -46,7 +46,6 @@ clean_host_folders()
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
-    train_steps = 1
     model = Imagine(
                 epochs = args.epochs,
                 image_width=args.size,
@@ -69,6 +68,7 @@ try:
     
     while not os.path.exists("STOP.txt"):
         host_loop_time = time.time()
+        
         img_names = [name[:-4] for name in os.listdir(host_in) if name.endswith(".jpg")]
         newest_img = max(img_names, key=lambda x: int(x)) if len(img_names) > 0 else 0
         
@@ -81,7 +81,7 @@ try:
             previous_img = newest_img
         # train
         start_train_time = time.time()
-        for _ in range(train_steps):
+        for _ in range(args.opt_steps):
             img_tensor, loss = model.train_step(0, count)
 
         # save new img
@@ -102,8 +102,8 @@ finally:
     os.makedirs(folder, exist_ok=True)
     time_now = timestr()
     path = os.path.join(folder, time_now)
-    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
-    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
+    subprocess.run(["ffmpeg", "-i", os.path.join("host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
+    subprocess.run(["ffmpeg", "-i", os.path.join("host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
     # clean folders
     clean_host_folders()
     # kill process
