@@ -61,6 +61,7 @@ try:
     text_encoding = None
     if args.text is not None and args.text != "":
         text_encoding = model.create_text_encoding(args.text)
+    text_weight = args.text_weight
     previous_img = None
     newest_img = None
     count = 0
@@ -75,8 +76,11 @@ try:
         # maybe update target img
         if newest_img != previous_img:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
-            img_encoding = model.create_img_encoding(img_path)
-            clip_encoding = img_encoding if text_encoding is None else (img_encoding + text_encoding) / 2
+            img_encoding = model.create_img_encoding(img_path) if text_weight < 1.0 else text_encoding
+            if text_encoding is None:
+                clip_encoding = img_encoding
+            else:
+                clip_encoding = (img_encoding * (1 - text_weight) + text_encoding * text_weight) / 2
             model.set_clip_encoding(encoding=clip_encoding)
             previous_img = newest_img
         # train

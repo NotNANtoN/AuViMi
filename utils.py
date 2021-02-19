@@ -14,10 +14,11 @@ def get_args():
         parser.add_argument("--lr", type=float, default=1e-5)
         
         parser.add_argument("--opt_steps", type=int, default=1)
+        parser.add_argument("--text", type=str, default=None)
+        parser.add_argument("--text_weight", type=float, default=0.5)
         
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
-        parser.add_argument("--text", type=str, default=None)
         args = parser.parse_args()
         return args
 
