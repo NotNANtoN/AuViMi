@@ -84,7 +84,7 @@ try:
                 clip_encoding = img_encoding
             else:
                 clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
-            clip_encoding /= clip.norm(dim=-1, keepdim=True)
+            clip_encoding /= clip_encoding.norm(dim=-1, keepdim=True)
             model.set_clip_encoding(encoding=clip_encoding)
             previous_img = newest_img
         # train
