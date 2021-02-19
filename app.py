@@ -112,7 +112,7 @@ def main(host, user, args):
             # move img over:
             
             img_name_client = "new.jpg"  
-            img_name_host = str(count) + ".jpg"
+            img_name_host = img_name_client #str(count) + ".jpg"
             count += 1
             img_path = os.path.join(client_out, img_name_client)
             # save img
