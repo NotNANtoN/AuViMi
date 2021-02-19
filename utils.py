@@ -11,7 +11,7 @@ def get_args():
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)
         parser.add_argument("--batch_size", type=int, default=16)
         parser.add_argument("--num_layers", type=int, default=44)
-        parser.add_argument("--lr", type=int, default=1e-5)
+        parser.add_argument("--lr", type=float, default=1e-5)
         
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
