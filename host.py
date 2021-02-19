@@ -9,15 +9,11 @@ import numpy as np
 import torchvision
 from PIL import Image
 
-from utils import time_stamp, kill_old_process, clean_pid, get_args
+from utils import time_stamp, kill_old_process, clean_pid, get_args, clean_folder
 
 sys.path.append("../deepdaze/")
 from deep_daze_repo.deep_daze.deep_daze import Imagine
 
-
-def clean_folder(path):
-    for f in os.listdir(path):
-        os.unlink(os.path.join(path, f))
 
 
 def clean_host_folders():
@@ -59,6 +55,7 @@ try:
                )
 
     text_encoding = None
+    img_encoding = None
     if args.text is not None and args.text != "":
         text_encoding = model.create_text_encoding(args.text)
     text_weight = args.text_weight
@@ -76,11 +73,18 @@ try:
         # maybe update target img
         if newest_img != previous_img:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
-            img_encoding = model.create_img_encoding(img_path) if text_weight < 1.0 else text_encoding
+            new_img_encoding = model.create_img_encoding(img_path) if text_weight < 1.0 else text_encoding
+            # update running avg of img encoding
+            if img_encoding is None:
+                img_encoding = new_img_encoding
+            else:
+                img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * img_encoding
+            # merge text and img encoding
             if text_encoding is None:
                 clip_encoding = img_encoding
             else:
-                clip_encoding = (img_encoding * (1 - text_weight) + text_encoding * text_weight) / 2
+                clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
+            clip_encoding /= clip.norm(dim=-1, keepdim=True)
             model.set_clip_encoding(encoding=clip_encoding)
             previous_img = newest_img
         # train

@@ -15,7 +15,7 @@ import torch
 import torch.nn.functional as F
 
 
-from utils import time_stamp, get_args
+from utils import time_stamp, get_args, clean_folder
 
 
 def output_reader(proc):
@@ -23,6 +23,10 @@ def output_reader(proc):
         print(line.decode('utf-8'), end='')
         #print('got line: {0}'.format(line.decode('utf-8')), end='')
 
+
+def clean_client_folders():
+    clean_folder("client_in")
+    clean_folder("client_out")
 
 
 def main(host, user, args):
@@ -43,7 +47,8 @@ def main(host, user, args):
     new_img_name = "new.jpg"
     host_path = os.path.join(host_out, new_img_name)
     client_path = os.path.join(client_in, new_img_name)
-
+    
+    clean_client_folders()
 
     # make sure that repo is cloned on host
     exists = subprocess.call(['ssh', host, 'test -e ' + pipes.quote(repo_name)]) == 0

@@ -16,6 +16,7 @@ def get_args():
         parser.add_argument("--opt_steps", type=int, default=1)
         parser.add_argument("--text", type=str, default=None)
         parser.add_argument("--text_weight", type=float, default=0.5)
+        parser.add_argument("--run_avg", type=float, default=0.5, help="What fraction of the old encoding to keep.")
         
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
@@ -59,4 +60,8 @@ def kill_old_process(create_new=False):
 def clean_pid():
     pidfile = "/tmp/mydaemon.pid"
     os.unlink(pidfile)
+    
+def clean_folder(path):
+    for f in os.listdir(path):
+        os.unlink(os.path.join(path, f))
 
