@@ -25,7 +25,7 @@ def clean_host_folders():
     clean_folder("host_out")
     
 def timestr():
-    return time.strftime("%x-%X", time.gmtime()).replace("/", "_")
+    return time.strftime("%x_%X", time.gmtime()).replace("/", "_")
     
 
 kill_old_process(create_new=True)
