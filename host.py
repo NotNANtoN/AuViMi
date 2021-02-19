@@ -105,7 +105,7 @@ finally:
     subprocess.run(["ffmpeg", "-i", os.path.join("host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
     subprocess.run(["ffmpeg", "-i", os.path.join("host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
     # clean folders
-    clean_host_folders()
+    #clean_host_folders()
     # kill process
     clean_pid()
 
