@@ -22,7 +22,7 @@ def clean_folder(path):
 
 def clean_host_folders():
     clean_folder("host_in")
-    clean_folder("host_out)
+    clean_folder("host_out")
     
 def timestr():
     return time.strftime("%x", time.gmtime())
