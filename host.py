@@ -105,9 +105,9 @@ finally:
     folder = "results"
     os.makedirs(folder, exist_ok=True)
     time_now = timestr()
-    path = os.path.join(folder, time_now)
-    subprocess.run(["ffmpeg", "-i", os.path.join("host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
-    subprocess.run(["ffmpeg", "-i", os.path.join("host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
+    path = os.path.join(os.getcwd(), folder, time_now)
+    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
+    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
     # clean folders
     #clean_host_folders()
     # kill process

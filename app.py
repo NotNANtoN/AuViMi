@@ -86,6 +86,9 @@ def main(host, user, args):
     old_hash = None
     new_img_time = time.time()
     
+    client_timings = []
+    host_timings = []
+    
     while(cap.isOpened()):
         start_loop_time = time.time()
         success, frame_cv2 = cap.read()
@@ -143,7 +146,9 @@ def main(host, user, args):
                     new_hash = joblib.hash(np_img_small)
                     if new_hash != old_hash:
                         old_hash = new_hash
-                        print("Seconds between trainings: ", time.time() - new_img_time)
+                        host_timing = time.time() - new_img_time
+                        print("Seconds between trainings: ", host_timing)
+                        host_timings.append(host_timing)
                         new_img_time = time.time()
                     # show processed img
                     img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)
@@ -155,7 +160,9 @@ def main(host, user, args):
         else:
             break
             
-        print("Time per client loop: ", time.time() - start_loop_time)
+        client_timing = time.time() - start_loop_time
+        print("Time per client loop: ", client_timing)
+        client_timings.append(client_timing)
         
         #for line in host_stdout_iterator:
         #    print(line)
@@ -165,6 +172,8 @@ def main(host, user, args):
         
         #print(get_stdout(host_process))
            
+    print("Mean client time:", np.mean(client_timings))
+    print("Mean host time:", np.mean(host_timings))
     #t.join()
     cap.release()
     return host_process
@@ -178,7 +187,7 @@ if __name__ == "__main__":
 
     try:
         host_process = main(host, user, args)
-        host_process.send_signal(signal.SIGINT)
+        #host_process.send_signal(signal.SIGINT)
     finally:
         #subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
         # create file to tell process to stop!
