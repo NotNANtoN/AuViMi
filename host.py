@@ -15,10 +15,14 @@ sys.path.append("../deepdaze/")
 from deep_daze_repo.deep_daze.deep_daze import Imagine
 
 
+def clean_folder(path):
+    for f in os.listdir(path):
+        os.unlink(os.path.join(path, f))
+
+
 def clean_host_folders():
-    shutil.rmtree('host_in')
-    shutil.rmtree('host_out')
-     
+    clean_folder("host_in")
+    clean_folder("host_out)
     
 def timestr():
     return time.strftime("%x", time.gmtime())
@@ -36,6 +40,8 @@ os.makedirs(host_out, exist_ok=True)
 
 
 args = get_args()
+
+clean_host_folders()
 
 try:
     to_pil = torchvision.transforms.ToPILImage()
@@ -98,7 +104,7 @@ finally:
     path = os.path.join(folder, time_now)
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
-    # clear folders
+    # clean folders
     clean_host_folders()
     # kill process
     clean_pid()
