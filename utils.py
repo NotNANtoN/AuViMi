@@ -38,10 +38,10 @@ def kill_old_process(create_new=False):
             pass
         time.sleep(5)
         # check if SIGINT was enough, else kill process
-        try:
-            os.kill(old_pid, 0)
-        except OSError:
-            os.kill(old_pid)
+        #try:
+        #    os.kill(old_pid, 0)
+        #except OSError:
+        #    os.kill(old_pid, signal.SIGTERM)
         
         os.unlink(pidfile)
 

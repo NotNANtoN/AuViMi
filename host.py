@@ -47,7 +47,7 @@ try:
                 gradient_accumulate_every=args.gradient_accumulate_every,
                 batch_size=args.batch_size,
                 num_layers=args.num_layers,
-                lr=args.lr   # 3e-3 is unstable
+                lr=args.lr,   # 3e-3 is unstable
                 
                 open_folder=False,
                 #start_image_train_iters=200,
