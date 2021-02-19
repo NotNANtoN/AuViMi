@@ -11,6 +11,7 @@ def get_args():
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)
         parser.add_argument("--batch_size", type=int, default=16)
         parser.add_argument("--num_layers", type=int, default=44)
+        
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
         parser.add_argument("--text", type=str, default=None)
@@ -29,18 +30,18 @@ def kill_old_process(create_new=False):
     if os.path.isfile(pidfile):
         print("Process already exists, killing old process...")
         with open(pidfile, 'r') as f:
-            old_pid = f.read()
+            old_pid = int(f.read())
         print("Old PID: ", old_pid)
         try:
-            os.kill(int(old_pid), signal.SIGINT)
+            os.kill(old_pid, signal.SIGINT)
         except ProcessLookupError:
             pass
         time.sleep(5)
         # check if SIGINT was enough, else kill process
         try:
-            os.kill(pid, 0)
+            os.kill(old_pid, 0)
         except OSError:
-            os.kill(pid)
+            os.kill(old_pid)
         
         os.unlink(pidfile)
 

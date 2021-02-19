@@ -25,7 +25,8 @@ def timestr():
     
 
 kill_old_process(create_new=True)
-
+if os.path.exists("STOP.txt"):
+        os.unlink("STOP.txt")
 
 # Do some actual work here
 host_in = "host_in"
@@ -46,8 +47,8 @@ try:
                 gradient_accumulate_every=args.gradient_accumulate_every,
                 batch_size=args.batch_size,
                 num_layers=args.num_layers,
+                lr=args.lr   # 3e-3 is unstable
                 
-                #lr=3e-3   # 3e-3 is unstable
                 open_folder=False,
                 #start_image_train_iters=200,
                )
@@ -58,7 +59,9 @@ try:
     previous_img = None
     newest_img = None
     count = 0
-    while True:
+    
+    
+    while not os.path.exists("STOP.txt"):
         host_loop_time = time.time()
         img_names = [name[:-4] for name in os.listdir(host_in) if name.endswith(".jpg")]
         newest_img = max(img_names, key=lambda x: int(x)) if len(img_names) > 0 else 0
@@ -86,6 +89,8 @@ try:
         
 
 finally:
+    if os.path.exists("STOP.txt"):
+        os.unlink("STOP.txt")
     # make videos
     folder = "results"
     os.makedirs(folder, exist_ok=True)

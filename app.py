@@ -39,6 +39,10 @@ def main(host, user, args):
 
     os.makedirs(client_out, exist_ok=True)
     os.makedirs(client_in, exist_ok=True)
+    
+    new_img_name = "new.jpg"
+    host_path = os.path.join(host_out, new_img_name)
+    client_path = os.path.join(client_in, new_img_name)
 
 
     # make sure that repo is cloned on host
@@ -119,10 +123,7 @@ def main(host, user, args):
             cv2.imshow("Input", frame_cv2)
             
             # get processed img (if there is a new one):
-            new_img_name = "new.jpg"
             local_img_name = str(count) + ".jpg"
-            host_path = os.path.join(host_out, new_img_name)
-            client_path = os.path.join(client_in, new_img_name)
             
             # load new image asynchronously
             subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
@@ -176,6 +177,8 @@ if __name__ == "__main__":
         host_process.send_signal(signal.SIGINT)
     finally:
         subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
+        # create file to tell process to stop!
+        subprocess.Popen(['ssh', host, 'touch', '~/AuViMi/STOP.txt'])
     
 
 
