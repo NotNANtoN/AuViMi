@@ -9,11 +9,12 @@ def get_args():
         parser.add_argument("--size", type=int, default=256)
         parser.add_argument("--epochs", type=int, default=12)
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)
-        parser.add_argument("--batch_size", type=int, default=8)
+        parser.add_argument("--batch_size", type=int, default=16)
         parser.add_argument("--num_layers", type=int, default=44)
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
-        parser.add_argument("--text", type=str, default="")
+        parser.add_argument("--text", type=str, default=None)
+        parser.add_argument("--lr", type=str, default=1e-5)
         args = parser.parse_args()
         return args
 
@@ -34,8 +35,14 @@ def kill_old_process(create_new=False):
             os.kill(int(old_pid), signal.SIGINT)
         except ProcessLookupError:
             pass
+        time.sleep(5)
+        # check if SIGINT was enough, else kill process
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            os.kill(pid)
+        
         os.unlink(pidfile)
-        time.sleep(2)
 
     if create_new:
         with open(pidfile, 'w') as f:
