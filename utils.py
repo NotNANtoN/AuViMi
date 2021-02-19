@@ -43,8 +43,11 @@ def kill_old_process(create_new=False):
         #except OSError:
         #    os.kill(old_pid, signal.SIGTERM)
         
-        os.unlink(pidfile)
-
+        try:
+            os.unlink(pidfile)
+        except FileNotFoundError:
+            print("PID file was already deleted")
+            
     if create_new:
         with open(pidfile, 'w') as f:
             f.write(pid)

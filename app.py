@@ -176,7 +176,7 @@ if __name__ == "__main__":
         host_process = main(host, user, args)
         host_process.send_signal(signal.SIGINT)
     finally:
-        subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
+        #subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
         # create file to tell process to stop!
         subprocess.Popen(['ssh', host, 'touch', '~/AuViMi/STOP.txt'])
     
