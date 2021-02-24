@@ -49,7 +49,7 @@ try:
                 batch_size=args.batch_size,
                 num_layers=args.num_layers,
                 lr=args.lr,   # 3e-3 is unstable
-                
+                lower_bound_cutout=args.lower_bound_cutout,                
                 open_folder=False,
                 #start_image_train_iters=200,
                )

@@ -9,14 +9,15 @@ def get_args():
         parser.add_argument("--size", type=int, default=256)
         parser.add_argument("--epochs", type=int, default=12)
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)
-        parser.add_argument("--batch_size", type=int, default=16)
+        parser.add_argument("--batch_size", type=int, default=4)
         parser.add_argument("--num_layers", type=int, default=44)
         parser.add_argument("--lr", type=float, default=1e-5)
-        
-        parser.add_argument("--opt_steps", type=int, default=1)
+
+        parser.add_argument("--lower_bound_cutout", type=float, default=0.7)
+        parser.add_argument("--opt_steps", type=int, default=3)
         parser.add_argument("--text", type=str, default=None)
         parser.add_argument("--text_weight", type=float, default=0.5)
-        parser.add_argument("--run_avg", type=float, default=0.5, help="What fraction of the old encoding to keep.")
+        parser.add_argument("--run_avg", type=float, default=0.0, help="What fraction of the old encoding to keep.")
         
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
