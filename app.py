@@ -64,7 +64,10 @@ def main(host, user, args):
     args = vars(args)
     for key in args:
         args_cli.append("--" + key)
-        args_cli.append(str(args[key]))
+        value = str(args[key])
+        if key == "text":
+            value = '"' + value + '"'
+        args_cli.append(value)
     host_process = subprocess.Popen(commands + args_cli, stdout=subprocess.PIPE)
     
     #t = threading.Thread(target=output_reader, args=(host_process,))
