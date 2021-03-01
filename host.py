@@ -87,6 +87,8 @@ try:
             clip_encoding /= clip_encoding.norm(dim=-1, keepdim=True)
             model.set_clip_encoding(encoding=clip_encoding)
             previous_img = newest_img
+        if newest_img is None:
+            continue
         # train
         start_train_time = time.time()
         for _ in range(args.opt_steps):
