@@ -68,7 +68,7 @@ try:
         host_loop_time = time.time()
         
         img_names = [name[:-4] for name in os.listdir(host_in) if name.endswith(".jpg")]
-        newest_img = max(img_names, key=lambda x: int(x)) if len(img_names) > 0 else 0
+        newest_img = max(img_names, key=lambda x: int(x)) if len(img_names) > 0 else None
         
         # maybe update target img
         if newest_img != previous_img:

@@ -117,10 +117,12 @@ def main(host, user, args):
         frame = frame.resize((x_target, y_target))
         
         # return on escape
-        if cv2.waitKey(33) == 27:
+        key = cv2.waitKey(1)
+        if key == 27:
+            print("Pressed Escape. Quitting!")
             break
             
-        if args["mode"] == "pic" and cv2.waitKey(33) == "p":
+        if args["mode"] == "pic" and key == ord("p"):
             move_pic = True
 
         if move_pic == True:
@@ -170,9 +172,6 @@ def main(host, user, args):
             except (ValueError, OSError):
                 pass
         
-            
-        else:
-            break
             
         client_timing = time.time() - start_loop_time
         print("Time per client loop: ", client_timing)
