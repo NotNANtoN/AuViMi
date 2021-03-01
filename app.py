@@ -91,6 +91,7 @@ def main(host, user, args):
     previous = 0
     count = 0
     
+    move_pic = True if args["mode"] == "stream" else False
     old_hash = None
     new_img_time = time.time()
     
@@ -117,12 +118,13 @@ def main(host, user, args):
         
         # return on escape
         if cv2.waitKey(33) == 27:
-            success = False
-
-        if success:
-            # move img over:
+            break
             
+        if args["mode"] == "pic" and cv2.waitKey(33) == "p":
+            move_pic = True
 
+        if move_pic == True:
+            # move img over:
             img_name_host = str(count) + ".jpg"
             img_name_client = img_name_host #"new.jpg"  
 
@@ -135,34 +137,38 @@ def main(host, user, args):
             subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
             # display img
             #rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
-            cv2.imshow("Input", frame_cv2)
-            
-            # get processed img (if there is a new one):
-            local_img_name = str(count) + ".jpg"
-            
-            # load new image asynchronously
-            subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
-            
-            if os.path.exists(client_path):
-                # load processed img
-                try:
-                    pil_img_small = Image.open(client_path)
-                    np_img_small = np.array(pil_img_small)
-                    pil_img_large = pil_img_small.resize((512, 512))
-                    np_img_large = np.array(pil_img_large)
+            if args["mode"] == "pic":
+                move_pic = False
+                cv2.imshow("Optimization goal", frame_cv2)
+        
+        cv2.imshow("Input", frame_cv2)
+        
+        # get processed img (if there is a new one):
+        local_img_name = str(count) + ".jpg"
+        
+        # load new image asynchronously
+        subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
+        
+        if os.path.exists(client_path):
+            # load processed img
+            try:
+                pil_img_small = Image.open(client_path)
+                np_img_small = np.array(pil_img_small)
+                pil_img_large = pil_img_small.resize((512, 512))
+                np_img_large = np.array(pil_img_large)
 
-                    new_hash = joblib.hash(np_img_small)
-                    if new_hash != old_hash:
-                        old_hash = new_hash
-                        host_timing = time.time() - new_img_time
-                        print("Seconds between trainings: ", host_timing)
-                        host_timings.append(host_timing)
-                        new_img_time = time.time()
-                    # show processed img
-                    img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)
-                    cv2.imshow("Mirror", np_img_large)
-                except (ValueError, OSError):
-                    pass
+                new_hash = joblib.hash(np_img_small)
+                if new_hash != old_hash:
+                    old_hash = new_hash
+                    host_timing = time.time() - new_img_time
+                    print("Seconds between trainings: ", host_timing)
+                    host_timings.append(host_timing)
+                    new_img_time = time.time()
+                # show processed img
+                img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)
+                cv2.imshow("Mirror", np_img_large)
+            except (ValueError, OSError):
+                pass
         
             
         else:

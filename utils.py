@@ -21,6 +21,7 @@ def get_args():
         
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
+        parser.add_argument("--mode", type=str, default="stream", choices=["stream", "pic"])
         args = parser.parse_args()
         return args
 
