@@ -66,7 +66,7 @@ def main(host, user, args):
         args_cli.append("--" + key)
         value = str(args[key])
         if key == "text":
-            if value == "":
+            if value is None or value == "":
                 continue
             value = '"' + value + '"'
         args_cli.append(value)

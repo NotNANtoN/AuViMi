@@ -16,7 +16,7 @@ def get_args():
         parser.add_argument("--saturate_bound", type=int, default=0)
         parser.add_argument("--lower_bound_cutout", type=float, default=0.1)
         parser.add_argument("--opt_steps", type=int, default=3)
-        parser.add_argument("--text", type=str, default=None)
+        parser.add_argument("--text", type=str, default="")
         parser.add_argument("--text_weight", type=float, default=0.5)
         parser.add_argument("--run_avg", type=float, default=0.0, help="What fraction of the old encoding to keep.")
         
