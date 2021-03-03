@@ -63,12 +63,12 @@ def main(host, user, args):
     args_cli = []
     args = vars(args)
     for key in args:
-        args_cli.append("--" + key)
         value = str(args[key])
         if key == "text":
             if value is None or value == "":
                 continue
             value = '"' + value + '"'
+        args_cli.append("--" + key)
         args_cli.append(value)
     host_process = subprocess.Popen(commands + args_cli, stdout=subprocess.PIPE)
     
