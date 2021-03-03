@@ -56,8 +56,9 @@ try:
 
     text_encoding = None
     img_encoding = None
-    if args.text is not None and args.text != "":
+    if args.text is not None:
         subprocess.Popen(['touch', f'~/AuViMi/debug/{args.text}.txt'])
+    if args.text is not None and args.text != "":
         text_encoding = model.create_text_encoding(args.text)
     text_weight = args.text_weight
     previous_img = None
