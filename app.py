@@ -66,6 +66,8 @@ def main(host, user, args):
         args_cli.append("--" + key)
         value = str(args[key])
         if key == "text":
+            if value == "":
+                continue
             value = '"' + value + '"'
         args_cli.append(value)
     host_process = subprocess.Popen(commands + args_cli, stdout=subprocess.PIPE)
@@ -143,7 +145,8 @@ def main(host, user, args):
                 move_pic = False
                 cv2.imshow("Optimization goal", frame_cv2)
         
-        cv2.imshow("Input", frame_cv2)
+        if args["text_weight"] != 1.0:
+            cv2.imshow("Input", frame_cv2)
         
         # get processed img (if there is a new one):
         local_img_name = str(count) + ".jpg"
@@ -174,7 +177,7 @@ def main(host, user, args):
         
             
         client_timing = time.time() - start_loop_time
-        print("Time per client loop: ", client_timing)
+        #print("Time per client loop: ", client_timing)
         client_timings.append(client_timing)
         
         #for line in host_stdout_iterator:
