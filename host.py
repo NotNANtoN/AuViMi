@@ -26,14 +26,14 @@ def timestr():
 
 kill_old_process(create_new=True)
 if os.path.exists("STOP.txt"):
-        os.unlink("STOP.txt")
+    os.unlink("STOP.txt")
 
 # Do some actual work here
 host_in = "host_in"
 host_out = "host_out"
 os.makedirs(host_in, exist_ok=True)
 os.makedirs(host_out, exist_ok=True)
-
+os.makedirs("debug", exist_ok=True)
 
 args = get_args()
 
@@ -57,6 +57,7 @@ try:
     text_encoding = None
     img_encoding = None
     if args.text is not None and args.text != "":
+        subprocess.Popen(['touch', f'~/AuViMi/debug/{args.text}.txt'])
         text_encoding = model.create_text_encoding(args.text)
     text_weight = args.text_weight
     previous_img = None
