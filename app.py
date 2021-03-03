@@ -70,15 +70,8 @@ def main(host, user, args):
             value = '"' + value + '"'
         args_cli.append("--" + key)
         args_cli.append(value)
-    host_process = subprocess.Popen(commands + args_cli, stdout=subprocess.PIPE)
-    
-    #t = threading.Thread(target=output_reader, args=(host_process,))
-    #t.start()
-    #def get_output(host_process):
-    #    for stdout_line in iter(host_process.stdout.readline, ""):
-    #        yield stdout_line 
-   
-    #host_stdout_iterator = get_output(host_process)
+    output_cmds = [">", "cli_out.txt"]
+    host_process = subprocess.Popen(commands + args_cli + output_cmds, stdout=subprocess.PIPE)
 
     # init webcam
     cap = cv2.VideoCapture(0)

@@ -57,6 +57,7 @@ try:
     text_encoding = None
     img_encoding = None
     if args.text is not None and args.text != "":
+        print("Optimizing on ", args.text)
         text_encoding = model.create_text_encoding(args.text)
     text_weight = args.text_weight
     previous_img = None
@@ -73,6 +74,7 @@ try:
         # maybe update target img
         if newest_img != previous_img:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
+            print("updated img target: ", img_path)
             new_img_encoding = model.create_img_encoding(img_path) if text_weight < 1.0 else text_encoding
             # update running avg of img encoding
             if img_encoding is None:
