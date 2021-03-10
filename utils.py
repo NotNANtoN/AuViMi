@@ -69,6 +69,9 @@ def clean_pid():
     os.unlink(pidfile)
     
 def clean_folder(path):
-    for f in os.listdir(path):
-        os.unlink(os.path.join(path, f))
+    try:
+        for f in os.listdir(path):
+            os.unlink(os.path.join(path, f))
+    except:
+        print("Could not clean up", path, "properly...")
 
