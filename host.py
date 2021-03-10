@@ -80,12 +80,12 @@ try:
             print("updated img target: ", img_path)
             new_img_encoding = model.create_img_encoding(img_path) if text_weight < 1.0 else text_encoding
             # update running avg of img encoding
-            if img_encoding is None:
-                img_encoding = new_img_encoding
-            else:
-                img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * img_encoding
+            if text_weight < 1.0:
+                img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
             # merge text and img encoding
-            if text_encoding is not None:
+            if text_encoding is None:
+                clip_encoding = img_encoding
+            else:
                 clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
             clip_encoding /= clip_encoding.norm(dim=-1, keepdim=True)
             model.set_clip_encoding(encoding=clip_encoding)
