@@ -57,11 +57,13 @@ try:
                 center_bias=args.center_bias,
                )
 
-    text_encoding = None
+
     img_encoding = None
+    text_encoding = None
     if args.text is not None and args.text != "":
         print("Optimizing on ", args.text)
         text_encoding = model.create_text_encoding(args.text)
+        text_encoding /= text_encoding.norm(dim=-1, keepdim=True)
     text_weight = args.text_weight
     previous_img = None
     newest_img = None
@@ -78,13 +80,16 @@ try:
         if newest_img != previous_img:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
             print("updated img target: ", img_path)
-            new_img_encoding = model.create_img_encoding(img_path) if text_weight < 1.0 else text_encoding
-            # update running avg of img encoding
+            # determine img encoding
             if text_weight < 1.0:
+                new_img_encoding = model.create_img_encoding(img_path)
                 img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
-            # merge text and img encoding
+                img_encoding /= img_encoding.norm(dim=-1, keepdim=True)
+            # merge image and text depending on conditions
             if text_encoding is None:
                 clip_encoding = img_encoding
+            elif text_weight == 1.0:
+                clip_encoding = text_encoding
             else:
                 clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
             clip_encoding /= clip_encoding.norm(dim=-1, keepdim=True)
