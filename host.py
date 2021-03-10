@@ -58,7 +58,7 @@ try:
                )
 
 
-    img_encoding = None
+    img_encoding = 0
     text_encoding = None
     if args.text is not None and args.text != "":
         print("Optimizing on ", args.text)
