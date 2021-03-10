@@ -52,6 +52,9 @@ try:
                 lower_bound_cutout=args.lower_bound_cutout,                
                 open_folder=False,
                 #start_image_train_iters=200,
+                save_progress=False,
+                do_occlusion=args.do_occlusion,
+                center_bias=args.center_bias,
                )
 
     text_encoding = None
@@ -82,9 +85,7 @@ try:
             else:
                 img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * img_encoding
             # merge text and img encoding
-            if text_encoding is None:
-                clip_encoding = img_encoding
-            else:
+            if text_encoding is not None:
                 clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
             clip_encoding /= clip_encoding.norm(dim=-1, keepdim=True)
             model.set_clip_encoding(encoding=clip_encoding)
