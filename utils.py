@@ -10,11 +10,15 @@ def get_args():
         parser.add_argument("--epochs", type=int, default=12)
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)
         parser.add_argument("--batch_size", type=int, default=32)
-        parser.add_argument("--num_layers", type=int, default=16)
+        parser.add_argument("--num_layers", type=int, default=32)
         parser.add_argument("--lr", type=float, default=1e-5)
 
         parser.add_argument("--saturate_bound", type=int, default=0)
-        parser.add_argument("--lower_bound_cutout", type=float, default=0.1)
+        parser.add_argument("--lower_bound_cutout", type=float, default=0.05)
+        parser.add_argument("--do_occlusion", type=int, default=0)
+        parser.add_argument("--center_bias", type=int, default=0)
+        parser.add_argument("--center_focus", type=int, default=0)
+        
         parser.add_argument("--opt_steps", type=int, default=5)
         parser.add_argument("--text", type=str, default="")
         parser.add_argument("--text_weight", type=float, default=0.5)
