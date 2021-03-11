@@ -72,7 +72,7 @@ try:
                 gradient_accumulate_every=1,
                )
 
-
+    text_weight = args.text_weight
     img_encoding = 0
     text_encoding = None
     if args.text is not None and args.text != "":
@@ -82,7 +82,7 @@ try:
     clip_encoding = text_encoding
     if text_weight == 1.0:
         model.set_clip_encoding(encoding=text_encoding)
-    text_weight = args.text_weight
+
     previous_img = None
     newest_img = None
     count = 0
