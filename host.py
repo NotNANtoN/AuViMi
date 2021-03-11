@@ -11,10 +11,6 @@ from PIL import Image
 
 from utils import time_stamp, kill_old_process, clean_pid, get_args, clean_folder
 
-sys.path.append("../deepdaze/")
-from deep_daze_repo.deep_daze.deep_daze import Imagine
-
-
 
 def clean_host_folders():
     clean_folder("host_in")
@@ -37,24 +33,45 @@ os.makedirs("debug", exist_ok=True)
 
 args = get_args()
 
+if args["gen_backbone"] == "deepdaze":
+    sys.path.append("../deepdaze/")
+    from deep_daze_repo.deep_daze.deep_daze import Imagine
+else:
+    sys.path.append("../big-sleep")
+    from big_sleep.big_sleep import Imagine
+
+
+
+
 clean_host_folders()
 
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
-    model = Imagine(
-                epochs = args.epochs,
-                image_width=args.size,
-                gradient_accumulate_every=args.gradient_accumulate_every,
-                batch_size=args.batch_size,
-                num_layers=args.num_layers,
-                lr=args.lr,   # 3e-3 is unstable
-                lower_bound_cutout=args.lower_bound_cutout,                
-                open_folder=False,
-                #start_image_train_iters=200,
+    if args["gen_backbone"] == "deepdaze:
+        model = Imagine(
+                    epochs = args.epochs,
+                    image_width=args.size,
+                    gradient_accumulate_every=args.gradient_accumulate_every,
+                    batch_size=args.batch_size,
+                    num_layers=args.num_layers,
+                    lr=args.lr,   # 3e-3 is unstable
+                    lower_bound_cutout=args.lower_bound_cutout,                
+                    open_folder=False,
+                    #start_image_train_iters=200,
+                    save_progress=False,
+                    do_occlusion=args.do_occlusion,
+                    center_bias=args.center_bias,
+                   )
+    else:
+        model = Imagine(
                 save_progress=False,
-                do_occlusion=args.do_occlusion,
-                center_bias=args.center_bias,
+                save_best=False,
+                open_folder=False,
+                num_cutouts=args.batch_size,
+                image_size=args.size,
+                epochs=args.epochs,
+                gradient_accumulate_every=1,
                )
 
 

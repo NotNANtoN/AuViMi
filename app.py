@@ -58,10 +58,20 @@ def main(host, user, args):
     else:
         subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
 
+    # filter irrelevant args
+    args = vars(args)
+    if args["gen_backbone"] == "bigsleep":
+        del args["num_layers"]
+        del args["lr"]
+        del args["saturate_bound"]
+        del args["lower_bound_cutout"]
+        del args["do_occlusion"]
+        del args["center_bias"]
+        del args["center_focus"]
+
     # start host process
     commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
     args_cli = []
-    args = vars(args)
     for key in args:
         value = str(args[key])
         if key == "text":
@@ -131,12 +141,15 @@ def main(host, user, args):
             frame.save(img_path, quality=95, subsampling=0)
             # send to host
             target_path = os.path.join(host_in, img_name_host)
-            subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
+
             # display img
             #rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             if args["mode"] == "pic":
+                subprocess.run(['rsync', img_path, host_scp_path + total_path + target_path])
                 move_pic = False
                 cv2.imshow("Optimization goal", frame_cv2)
+            else:
+                subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
         
         if args["text_weight"] != 1.0:
             cv2.imshow("Input", frame_cv2)
@@ -164,7 +177,7 @@ def main(host, user, args):
                     new_img_time = time.time()
                 # show processed img
                 img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)
-                cv2.imshow("Mirror", np_img_large)
+                cv2.imshow("Mirror", img)
             except (ValueError, OSError):
                 pass
         
