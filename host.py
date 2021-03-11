@@ -33,7 +33,7 @@ os.makedirs("debug", exist_ok=True)
 
 args = get_args()
 
-if args["gen_backbone"] == "deepdaze":
+if args.gen_backbone == "deepdaze":
     sys.path.append("../deepdaze/")
     from deep_daze_repo.deep_daze.deep_daze import Imagine
 else:
@@ -48,7 +48,7 @@ clean_host_folders()
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
-    if args["gen_backbone"] == "deepdaze":
+    if args.gen_backbone == "deepdaze":
         model = Imagine(
                     epochs = args.epochs,
                     image_width=args.size,
