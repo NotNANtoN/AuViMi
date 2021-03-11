@@ -73,13 +73,13 @@ try:
                )
 
 
-    clip_encoding = None
     img_encoding = 0
     text_encoding = None
     if args.text is not None and args.text != "":
         print("Optimizing on ", args.text)
         text_encoding = model.create_text_encoding(args.text)
         text_encoding /= text_encoding.norm(dim=-1, keepdim=True)
+    clip_encoding = text_encoding
     text_weight = args.text_weight
     previous_img = None
     newest_img = None
@@ -93,22 +93,18 @@ try:
         newest_img = max(img_names, key=lambda x: int(x)) if len(img_names) > 0 else None
         
         # maybe update target img
-        if newest_img != previous_img:
+        if text_weight < 1.0 and newest_img != previous_img:
+            # determine img encoding
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
             print("updated img target: ", img_path)
-            # determine img encoding
-            if text_weight < 1.0:
-                new_img_encoding = model.create_img_encoding(img_path)
-                img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
-                img_encoding /= img_encoding.norm(dim=-1, keepdim=True)
+            new_img_encoding = model.create_img_encoding(img_path)
+            img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
             # merge image and text depending on conditions
             if text_encoding is None:
                 clip_encoding = img_encoding
-            elif text_weight == 1.0:
-                clip_encoding = text_encoding
             else:
                 clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
-            clip_encoding /= clip_encoding.norm(dim=-1, keepdim=True)
+
             model.set_clip_encoding(encoding=clip_encoding)
             previous_img = newest_img
         if clip_encoding is None:
