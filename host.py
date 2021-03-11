@@ -80,6 +80,8 @@ try:
         text_encoding = model.create_text_encoding(args.text)
         text_encoding /= text_encoding.norm(dim=-1, keepdim=True)
     clip_encoding = text_encoding
+    if text_weight == 1.0:
+        model.set_clip_encoding(encoding=text_encoding)
     text_weight = args.text_weight
     previous_img = None
     newest_img = None
