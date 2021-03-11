@@ -48,7 +48,7 @@ clean_host_folders()
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
-    if args["gen_backbone"] == "deepdaze:
+    if args["gen_backbone"] == "deepdaze":
         model = Imagine(
                     epochs = args.epochs,
                     image_width=args.size,
