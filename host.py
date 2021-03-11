@@ -73,6 +73,7 @@ try:
                )
 
 
+    clip_encoding = None
     img_encoding = 0
     text_encoding = None
     if args.text is not None and args.text != "":
@@ -110,7 +111,7 @@ try:
             clip_encoding /= clip_encoding.norm(dim=-1, keepdim=True)
             model.set_clip_encoding(encoding=clip_encoding)
             previous_img = newest_img
-        if newest_img is None:
+        if clip_encoding is None:
             continue
         # train
         start_train_time = time.time()
