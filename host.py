@@ -37,10 +37,8 @@ if args.gen_backbone == "deepdaze":
     sys.path.append("../deepdaze/")
     from deep_daze_repo.deep_daze.deep_daze import Imagine
 else:
-    sys.path.append("../big-sleep")
-    from big_sleep.big_sleep import Imagine
-
-
+    sys.path.append("../")
+    from big_sleep_repo.big_sleep.big_sleep import Imagine
 
 
 clean_host_folders()
