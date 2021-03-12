@@ -29,7 +29,7 @@ At the moment, we only support the combination of the webcam pictures with a sin
 
 **Install**
 
-Install the `requirements.txt` using `python3 -m pip install -r requirements.txt`. Also, install `ffmpeg` if you want a .mp4 video of the interpretation using `sudo apt-get install ffmpeg`.
+Install the `requirements.txt` using `python3 -m pip install -r requirements.txt`. Also, install `ffmpeg` on the host server if you want a .mp4 video of the interpretation using `sudo apt-get install ffmpeg`.
 
 **Note**
 
