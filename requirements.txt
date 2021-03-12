@@ -4,4 +4,5 @@ deep-daze >= 0.6.0
 joblib 
 cv2
 PIL
-big-sleep
+#big-sleep
+git+git://github.com/NotNANtoN/big-sleep@main#egg=big_sleep
