@@ -27,16 +27,23 @@ At the moment, we only support the combination of the webcam pictures with a sin
 
 ## Usage
 
-### Essential: you need to set the --host, --user, and --python_path
-
-At the moment, this only works with a remote GPU server that does the computation. Therefore, we assume that ssh is set up. Furthermore, we assume that an ssh-key is used instead of a password to connect to the remote server.
+**Install**
 
 Install the `requirements.txt` using `python3 -m pip install -r requirements.txt`. Also, install `ffmpeg` if you want a .mp4 video of the interpretation using `sudo apt-get install ffmpeg`.
 
-`host`could be `university_X.edu.com` and `user` would be your username on that host, e.g. `student_Y`. To find out what to insert for `python_path`, connect to your host and enter `which python3`.
+**Note**
 
+At the moment, this only works with a remote GPU server that does the computation. Therefore, we assume that ssh is set up. Furthermore, we assume that an ssh-key is used instead of a password to connect to the remote server.
 
-Specifying the *operating mode*: If `pic` is set as an operating mode, the user can press `p` to set a new optimization goal - for `stream` the optimization goal is set automatically to the newest pictures from the webcam feed:
+**Commands:**
+
+**You need to set --host, --user, and --python_path!**
+
+`host`could be `university_X.edu.com` and `user` would be your username on that host, e.g. `student_Y`. To find out what to insert for `python_path`, connect to your host and enter `which python3`. This could lead to:
+
+``` python3 app.py --user student_Y --host university_X.edu.com --python_path /usr/bin/python3 ```
+
+Specifying the **operating mode**: If `pic` is set as an operating mode, the user can press `p` to set a new optimization goal - for `stream` the optimization goal is set automatically to the newest pictures from the webcam feed:
 
 ``` python3 app.py --mode stream ```
 
@@ -44,6 +51,6 @@ Specifying the backbone, image size (smaller lead to higher FPR but look less ni
 
 ``` python3 app.py --gen_backbone deepdaze --size 256 --batch_size 32 --mode stream --meta 1 --meta_lr 0.2  ```
 
-*Add text* using `--text` and set its weight with `--text_weight`. Setting the weight to `1.0`will ignore the webcam and only visualize the text:
+**Add text** using `--text` and set its weight with `--text_weight`. Setting the weight to `1.0`will ignore the webcam and only visualize the text:
 
 ``` python3 app.py --text "A funky human." --text_weight 0.5 ```
