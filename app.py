@@ -33,7 +33,7 @@ def main(host, user, args):
 
     # small fix for myself
     if args.host == "abakus.ddnss.de":
-        args.host = "/home/anton/anaconda3/bin/python"
+        args.python_path = "/home/anton/anaconda3/bin/python"
 
     repo_name = "AuViMi"
     total_path = "~/AuViMi/"
@@ -164,17 +164,15 @@ def main(host, user, args):
             else:
                 transfer_cmd = subprocess.Popen
             if args["run_local"]:
-                frame.save(target_path)
+                frame.save(target_path, quality=95, subsampling=0)
             else:
                 transfer_cmd(rsync_cmds + [img_path, host_scp_path + total_path + target_path])
         
         if args["text_weight"] != 1.0:
             cv2.imshow("Input", frame_cv2)
+
         
-        # get processed img (if there is a new one):
-        local_img_name = str(count) + ".jpg"
-        
-        # load new image asynchronously
+        # load new image from host asynchronously
         if not args["run_local"]:
             subprocess.Popen(rsync_cmds + [host_scp_path + total_path + host_path, client_path])
         
@@ -200,23 +198,13 @@ def main(host, user, args):
                 cv2.imshow("Mirror", img)
             except (ValueError, OSError):
                 pass
-        
             
         client_timing = time.time() - start_loop_time
         #print("Time per client loop: ", client_timing)
         client_timings.append(client_timing)
-        
-        #for line in host_stdout_iterator:
-        #    print(line)
-        #host_out = next(host_stdout_iterator)
-        #print(host_out)
-        
-        
-        #print(get_stdout(host_process))
            
     print("Mean client time:", np.mean(client_timings))
     print("Mean host time:", np.mean(host_timings))
-    #t.join()
     cap.release()
     return host_process
     
@@ -229,9 +217,7 @@ if __name__ == "__main__":
 
     try:
         host_process = main(host, user, args)
-        #host_process.send_signal(signal.SIGINT)
     finally:
-        #subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
         # create file to tell process to stop!
         if not args.run_local:
             subprocess.Popen(['ssh', host, 'touch', '~/AuViMi/STOP.txt'])

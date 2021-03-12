@@ -161,7 +161,14 @@ finally:
     os.makedirs(folder, exist_ok=True)
     time_now = timestr()
     path = os.path.join(os.getcwd(), folder, time_now)
+    # save output movie
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
+    # rename host_in images for ffmpeg:
+    files = os.listdir("host_in")
+    files = sorted(files, key=lambda f: int(f[:-4]))
+    for f, i in zip(files, range(len(files))):
+        subprocess.run(["mv", os.path.join("host_in", f), os.path.join("host_in", str(i) + ".jpg")])
+    # save input movie
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
     # clean folders
     #clean_host_folders()
