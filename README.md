@@ -41,4 +41,4 @@ Specifying the backbone, image size (smaller lead to higher FPR but look less ni
 ``` python3 app.py --gen_backbone deepdaze --size 256 --batch_size 32 --mode stream --meta 1 --meta_lr 0.2  ```
 
 Add text using `--text` and set its weight with `--text_weight`. Setting the weight to `1.0`will ignore the webcam and only visualize the text:
-``` python3 app.py --text "A funky human." --text_weight 0.5 ``
+``` python3 app.py --text "A funky human." --text_weight 0.5 ```
