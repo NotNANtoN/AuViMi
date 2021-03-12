@@ -111,10 +111,28 @@ try:
             previous_img = newest_img
         if clip_encoding is None:
             continue
+            
+            
+        
         # train
-        start_train_time = time.time()
-        for _ in range(args.opt_steps):
-            img_tensor, loss = model.train_step(0, count)
+        if args.meta:
+            # reptile approach (openai)
+            slow_weights = model.state_dict().copy()
+            
+            
+            for _ in range(args.opt_steps):
+                img_tensor, loss = model.train_step(0, count)
+            adapted_weights = model.state_dict()
+            
+            # pseudo: new_slow_weights = slow_weights + args.meta_lr * (adapted_weights - slow_weights)
+            for key in slow_weights:
+                slow_weights[key] += args.meta_lr * (adapted_weights[key] - slow_weights[key])
+            
+            model.load_state_dict(slow_weights)    
+            
+        else:
+            for _ in range(args.opt_steps):
+                img_tensor, loss = model.train_step(0, count)
 
         # save new img
         img_np = np.uint8(img_tensor.cpu().detach().squeeze(0).permute(1, 2, 0).numpy() * 255)
