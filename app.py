@@ -50,14 +50,16 @@ def main(host, user, args):
     
     clean_client_folders()
 
+
     # make sure that repo is cloned on host
-    exists = subprocess.call(['ssh', host, 'test -e ' + pipes.quote(repo_name)]) == 0
-    print("Repo exists: ", exists)
-    if not exists:
-        subprocess.run(['ssh', host, 'git', 'clone', 'git@github.com:NotNANtoN/AuViMi.git'])
-        subprocess.run(['ssh', host, 'cd AuViMi;', host_python_path, '-m', 'pip', 'install', '-r', 'requirements.txt'])
-    else:
-        subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
+    if not args.run_local:
+        exists = subprocess.call(['ssh', host, 'test -e ' + pipes.quote(repo_name)]) == 0
+        print("Repo exists: ", exists)
+        if not exists:
+            subprocess.run(['ssh', host, 'git', 'clone', 'git@github.com:NotNANtoN/AuViMi.git'])
+            subprocess.run(['ssh', host, 'cd AuViMi;', host_python_path, '-m', 'pip', 'install', '-r', 'requirements.txt'])
+        else:
+            subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
 
     # filter irrelevant args
     args = vars(args)
@@ -71,7 +73,10 @@ def main(host, user, args):
         del args["center_focus"]
 
     # start host process
-    commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
+    if args.run_local:
+        commands = [host_python_path, 'host.py']
+    else:
+        commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
     args_cli = []
     for key in args:
         value = str(args[key])
@@ -153,7 +158,10 @@ def main(host, user, args):
                 cv2.imshow("Optimization goal", frame_cv2)
             else:
                 transfer_cmd = subprocess.Popen
-            transfer_cmd(rsync_cmds + [img_path, host_scp_path + total_path + target_path])
+            if args.run_local:
+                frame.save(target_path)
+            else:
+                transfer_cmd(rsync_cmds + [img_path, host_scp_path + total_path + target_path])
         
         if args["text_weight"] != 1.0:
             cv2.imshow("Input", frame_cv2)
@@ -162,7 +170,8 @@ def main(host, user, args):
         local_img_name = str(count) + ".jpg"
         
         # load new image asynchronously
-        subprocess.Popen(rsync_cmds + [host_scp_path + total_path + host_path, client_path])
+        if not args.run_local:
+            subprocess.Popen(rsync_cmds + [host_scp_path + total_path + host_path, client_path])
         
         if os.path.exists(client_path):
             # load processed img
@@ -219,7 +228,8 @@ if __name__ == "__main__":
     finally:
         #subprocess.Popen(['ssh', host, 'python3', '~/AuViMi/stop_host.py'])
         # create file to tell process to stop!
-        subprocess.Popen(['ssh', host, 'touch', '~/AuViMi/STOP.txt'])
+        if not args.run_local:
+            subprocess.Popen(['ssh', host, 'touch', '~/AuViMi/STOP.txt'])
     
 
 

@@ -27,6 +27,8 @@ if os.path.exists("STOP.txt"):
 # Do some actual work here
 host_in = "host_in"
 host_out = "host_out"
+client_in = "client_in"
+os.makedirs(client_in, exist_ok=True)
 os.makedirs(host_in, exist_ok=True)
 os.makedirs(host_out, exist_ok=True)
 os.makedirs("debug", exist_ok=True)
@@ -125,7 +127,6 @@ try:
             # reptile approach (openai)
             slow_weights = model.state_dict().copy()
             
-            
             for _ in range(args.opt_steps):
                 img_tensor, loss = model.train_step(0, count)
             adapted_weights = model.state_dict()
@@ -147,8 +148,8 @@ try:
         count += 1
         img_pil.save(os.path.join(host_out, "new.jpg"), quality=95, subsampling=0)
         img_pil.save(os.path.join(host_out, str(count) + ".jpg"), quality=95, subsampling=0)
-        #np.save(os.path.join(host_out, "new.npy"), img_np)
-        #np.save(os.path.join(host_out, str(count) + ".npy"), img_np)
+        if args.run_local:
+            img_pil.save(os.path.join(client_in, "new.jpg"), quality=95, subsampling=0)
         
 
 finally:
