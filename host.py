@@ -126,7 +126,8 @@ try:
             
             # pseudo: new_slow_weights = slow_weights + args.meta_lr * (adapted_weights - slow_weights)
             for key in slow_weights:
-                slow_weights[key] += args.meta_lr * (adapted_weights[key] - slow_weights[key])
+                new_slow_weights = slow_weights[key] + args.meta_lr * (adapted_weights[key] - slow_weights[key])
+                slow_weights[key] = new_slow_weights.type(slow_weights[key].dtype)
             
             model.load_state_dict(slow_weights)    
             
