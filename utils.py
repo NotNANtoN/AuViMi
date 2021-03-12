@@ -21,7 +21,7 @@ def get_args():
         parser.add_argument("--center_focus", type=int, default=0)
         
         parser.add_argument("--meta", type=int, default=0)
-        parser.add_argumnet("--meta_lr", type=float, default=0.1) 
+        parser.add_argument("--meta_lr", type=float, default=0.1) 
         parser.add_argument("--opt_steps", type=int, default=5)
         parser.add_argument("--text", type=str, default="")
         parser.add_argument("--text_weight", type=float, default=0.5)
