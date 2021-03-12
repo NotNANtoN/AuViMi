@@ -30,6 +30,11 @@ def clean_client_folders():
 
 
 def main(host, user, args):
+
+    # small fix for myself
+    if args.host == "abakus.ddnss.de":
+        args.host = "/home/anton/anaconda3/bin/python"
+
     repo_name = "AuViMi"
     total_path = "~/AuViMi/"
     client_out = os.path.join("client_out")
