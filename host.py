@@ -36,6 +36,7 @@ os.makedirs("debug", exist_ok=True)
 args = get_args()
 
 if args.host == "abakus.ddnss.de":
+    args.host = "/home/anton/anaconda3/bin/python"
     if args.gen_backbone == "deepdaze":
         sys.path.append("../deepdaze/")
         from deep_daze_repo.deep_daze.deep_daze import Imagine   

@@ -73,7 +73,7 @@ def main(host, user, args):
         del args["center_focus"]
 
     # start host process
-    if args.run_local:
+    if args["run_local"]:
         commands = [host_python_path, 'host.py']
     else:
         commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
@@ -158,7 +158,7 @@ def main(host, user, args):
                 cv2.imshow("Optimization goal", frame_cv2)
             else:
                 transfer_cmd = subprocess.Popen
-            if args.run_local:
+            if args["run_local"]:
                 frame.save(target_path)
             else:
                 transfer_cmd(rsync_cmds + [img_path, host_scp_path + total_path + target_path])
@@ -170,7 +170,7 @@ def main(host, user, args):
         local_img_name = str(count) + ".jpg"
         
         # load new image asynchronously
-        if not args.run_local:
+        if not args["run_local"]:
             subprocess.Popen(rsync_cmds + [host_scp_path + total_path + host_path, client_path])
         
         if os.path.exists(client_path):
