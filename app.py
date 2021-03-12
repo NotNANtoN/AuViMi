@@ -36,7 +36,7 @@ def main(host, user, args):
     client_in = os.path.join("client_in")
     host_in = os.path.join("host_in")
     host_out = os.path.join("host_out")
-    host_python_path = "/home/anton/anaconda3/bin/python"
+    host_python_path = args.python_path
     host_scp_path = user + "@" + host + ":"
     
     resize_size = 224

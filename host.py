@@ -33,12 +33,18 @@ os.makedirs("debug", exist_ok=True)
 
 args = get_args()
 
-if args.gen_backbone == "deepdaze":
-    sys.path.append("../deepdaze/")
-    from deep_daze_repo.deep_daze.deep_daze import Imagine
+if args.host == "abakus.ddnss.de":
+    if args.gen_backbone == "deepdaze":
+        sys.path.append("../deepdaze/")
+        from deep_daze_repo.deep_daze.deep_daze import Imagine   
+    else:
+        sys.path.append("../")
+        from big_sleep_repo.big_sleep.big_sleep import Imagine
 else:
-    sys.path.append("../")
-    from big_sleep_repo.big_sleep.big_sleep import Imagine
+    if args.gen_backbone == "deepdaze":
+        from deep_daze import Imagine   
+    else:
+        from big_sleep import Imagine
 
 
 clean_host_folders()

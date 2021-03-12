@@ -27,6 +27,7 @@ def get_args():
         parser.add_argument("--text_weight", type=float, default=0.5)
         parser.add_argument("--run_avg", type=float, default=0.0, help="What fraction of the old encoding to keep.")
         
+        parser.add_argument("--python_path", type=str, default="/home/anton/anaconda3/bin/python")
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
         parser.add_argument("--mode", type=str, default="stream", choices=["stream", "pic"])
