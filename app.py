@@ -104,6 +104,8 @@ def main(host, user, args):
     client_timings = []
     host_timings = []
     
+    rsync_cmds = ["rsync", "-chazuq", "--ignore-missing-args"]
+    
     while(cap.isOpened()):
         start_loop_time = time.time()
         success, frame_cv2 = cap.read()
@@ -146,11 +148,12 @@ def main(host, user, args):
             # display img
             #rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
             if args["mode"] == "pic":
-                subprocess.run(['rsync', img_path, host_scp_path + total_path + target_path])
+                transfer_cmd = subprocess.run
                 move_pic = False
                 cv2.imshow("Optimization goal", frame_cv2)
             else:
-                subprocess.Popen(['rsync', img_path, host_scp_path + total_path + target_path])
+                transfer_cmd = subprocess.Popen
+            transfer_cmd(rsync_cmds + [img_path, host_scp_path + total_path + target_path])
         
         if args["text_weight"] != 1.0:
             cv2.imshow("Input", frame_cv2)
@@ -159,24 +162,26 @@ def main(host, user, args):
         local_img_name = str(count) + ".jpg"
         
         # load new image asynchronously
-        subprocess.Popen(['rsync', host_scp_path + total_path + host_path, client_path])
+        subprocess.Popen(rsync_cmds + [host_scp_path + total_path + host_path, client_path])
         
         if os.path.exists(client_path):
             # load processed img
             try:
                 pil_img_small = Image.open(client_path)
                 np_img_small = np.array(pil_img_small)
-                pil_img_large = pil_img_small.resize((512, 512))
-                np_img_large = np.array(pil_img_large)
 
                 new_hash = joblib.hash(np_img_small)
                 if new_hash != old_hash:
                     old_hash = new_hash
                     host_timing = time.time() - new_img_time
-                    print("Seconds between trainings: ", host_timing)
+                    #print("Seconds between trainings: ", host_timing)
                     host_timings.append(host_timing)
                     new_img_time = time.time()
-                # show processed img
+                else:
+                    continue
+                pil_img_large = pil_img_small.resize((512, 512))
+                np_img_large = np.array(pil_img_large)
+                # convert to cv2 color space
                 img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)
                 cv2.imshow("Mirror", img)
             except (ValueError, OSError):
