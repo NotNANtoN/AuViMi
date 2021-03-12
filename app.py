@@ -55,6 +55,7 @@ def main(host, user, args):
     print("Repo exists: ", exists)
     if not exists:
         subprocess.run(['ssh', host, 'git', 'clone', 'git@github.com:NotNANtoN/AuViMi.git'])
+        subprocess.run(['ssh', host, 'cd AuViMi;', host_python_path, '-m', 'pip', 'install', '-r', 'requirements.txt'])
     else:
         subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
 
