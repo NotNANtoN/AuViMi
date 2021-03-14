@@ -32,7 +32,7 @@ def clean_client_folders():
 def main(host, user, args):
 
     # small fix for myself
-    if args.host == "abakus.ddnss.de":
+    if args.host == "abakus.ddnss.de" and not args.run_local:
         args.python_path = "/home/anton/anaconda3/bin/python"
 
     repo_name = "AuViMi"
@@ -46,8 +46,9 @@ def main(host, user, args):
     
     resize_size = 224
 
-    os.makedirs(client_out, exist_ok=True)
-    os.makedirs(client_in, exist_ok=True)
+    # create folders
+    for f in (client_out, client_in, host_out, host_in):
+        os.makedirs(f, exist_ok=True)
     
     new_img_name = "new.jpg"
     host_path = os.path.join(host_out, new_img_name)
@@ -82,17 +83,14 @@ def main(host, user, args):
         commands = [host_python_path, 'host.py']
     else:
         commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
-    args_cli = []
-    for key in args:
-        value = str(args[key])
-        if key == "text":
-            if value is None or value == "":
-                continue
-            value = '"' + value + '"'
-        args_cli.append("--" + key)
-        args_cli.append(value)
+    args_cli = ["--" + key + '="' + str(args[key]) + '"' for key in args if (args[key] is not None and str(args[key]) != "")]
     output_cmds = [">", "cli_out.txt"]
-    host_process = subprocess.Popen(commands + args_cli + output_cmds, stdout=subprocess.PIPE)
+    all_cmds = commands + args_cli + output_cmds
+    joined = " ".join(all_cmds)
+    if args["run_local"]:
+        host_process = subprocess.Popen(joined, shell=True, stdout=subprocess.PIPE)
+    else:
+        host_process = subprocess.Popen(all_cmds, shell=False, stdout=subprocess.PIPE)
 
     # init webcam
     cap = cv2.VideoCapture(0)

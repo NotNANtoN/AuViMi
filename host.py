@@ -35,6 +35,7 @@ os.makedirs("debug", exist_ok=True)
 
 args = get_args()
 
+# import experimental repositories if on abakus
 if args.host == "abakus.ddnss.de":
     print(vars(args))
     if args.gen_backbone == "deepdaze":
@@ -120,25 +121,22 @@ try:
             previous_img = newest_img
         if clip_encoding is None:
             continue
-            
-            
         
         # train
         if args.meta:
-            # reptile approach (openai)
+            # reptile(openai)/FOMAML(Finn) approach
             slow_weights = model.state_dict().copy()
-            
+            # update fast_weight for n steps
             for _ in range(args.opt_steps):
                 img_tensor, loss = model.train_step(0, count)
             adapted_weights = model.state_dict()
-            
-            # pseudo: new_slow_weights = slow_weights + args.meta_lr * (adapted_weights - slow_weights)
+            # take the slow_weights a step closer to the updated fast_weights 
+            # pseudoversion: new_slow_weights = slow_weights + args.meta_lr * (adapted_weights - slow_weights)
             for key in slow_weights:
                 new_slow_weights = slow_weights[key] + args.meta_lr * (adapted_weights[key] - slow_weights[key])
                 slow_weights[key] = new_slow_weights.type(slow_weights[key].dtype)
-            
+            # put the updated slow weights back in the model
             model.load_state_dict(slow_weights)    
-            
         else:
             for _ in range(args.opt_steps):
                 img_tensor, loss = model.train_step(0, count)
