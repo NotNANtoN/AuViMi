@@ -23,7 +23,7 @@ And here's a beautiful self-portrait of NotNANtoN with [big-sleep](https://githu
 
 https://user-images.githubusercontent.com/19983153/110971466-38044a80-835b-11eb-884f-5d52dbd5d06d.mp4
 
-At the moment, we only support the combination of the webcam pictures with a single sentence read from the CLI.
+At the moment, we only support reading in the webcam pictures and we support the combination of the webcam pictures with a single sentence read from the CLI.
 
 ## Usage
 
@@ -33,11 +33,16 @@ Install the `requirements.txt` using `python3 -m pip install -r requirements.txt
 
 **Note**
 
-At the moment, this only works with a remote GPU server that does the computation. Therefore, we assume that ssh is set up. Furthermore, we assume that an ssh-key is used instead of a password to connect to the remote server.
+If you use a remote GPU host to do the heavy computation, we assume that ssh is set up. Furthermore, we assume that an ssh-key is used instead of a password to connect to the remote server.
 
 **Commands:**
 
-**You need to set --host, --user, and --python_path!**
+To run on your GPU laptop or desktop with a webcam, the following command should work. `python_path`defaults to `/usr/bin/python3`, so you only need to use it if you are using a `venv` or if the python path on the remote host is different from the default:
+
+``` python3 app.py --run_local 1 --python_path YOUR_PYTHON_PATH ```
+
+
+**You need to set --host, --user, and --python_path if you run remotely!**
 
 `host`could be `university_X.edu.com` and `user` would be your username on that host, e.g. `student_Y`. To find out what to insert for `python_path`, connect to your host and enter `which python3`. This could lead to:
 
