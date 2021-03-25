@@ -77,6 +77,7 @@ def main(host, user, args):
         del args["do_occlusion"]
         del args["center_bias"]
         del args["center_focus"]
+        del args["hidden_size"]
 
     # start host process
     if args["run_local"]:

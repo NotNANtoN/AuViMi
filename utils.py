@@ -13,6 +13,7 @@ def get_args():
         parser.add_argument("--batch_size", type=int, default=32)
         parser.add_argument("--lr", type=float, default=1e-5)
 
+        parser.add_argument("--hidden_size", type=int, default=256)
         parser.add_argument("--num_layers", type=int, default=32)
         parser.add_argument("--saturate_bound", type=int, default=0)
         parser.add_argument("--lower_bound_cutout", type=float, default=0.05)
