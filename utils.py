@@ -20,6 +20,7 @@ def get_args():
         #parser.add_argument("--do_occlusion", type=int, default=0)
         parser.add_argument("--center_bias", type=int, default=0)
         parser.add_argument("--center_focus", type=int, default=0)
+        parser.add_argument("--avg_feats", type=int, default=0)
         
         parser.add_argument("--meta", type=int, default=0)
         parser.add_argument("--meta_lr", type=float, default=0.1) 

@@ -78,6 +78,7 @@ def main(host, user, args):
         del args["center_bias"]
         del args["center_focus"]
         del args["hidden_size"]
+        del args["avg_feats"]
 
     # start host process
     if args["run_local"]:

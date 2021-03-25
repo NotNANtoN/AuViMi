@@ -71,6 +71,7 @@ try:
                     #do_occlusion=args.do_occlusion,
                     center_bias=args.center_bias,
                     hidden_size=args.hidden_size,
+                    avg_feats=args.avg_feats,
                    )
     else:
         model = Imagine(
