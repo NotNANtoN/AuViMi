@@ -167,7 +167,10 @@ finally:
     files = os.listdir("host_in")
     files = sorted(files, key=lambda f: int(f[:-4]))
     for f, i in zip(files, range(len(files))):
-        subprocess.run(["mv", os.path.join("host_in", f), os.path.join("host_in", str(i) + ".jpg")])
+        orig_name = os.path.join("host_in", f)
+        new_name = os.path.join("host_in", str(i) + ".jpg")
+        if orig_name != new_name:
+            subprocess.run(["mv", orig_name, new_name])
     # save input movie
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
     # clean folders
