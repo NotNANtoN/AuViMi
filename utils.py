@@ -17,7 +17,7 @@ def get_args():
         parser.add_argument("--num_layers", type=int, default=32)
         parser.add_argument("--saturate_bound", type=int, default=0)
         parser.add_argument("--lower_bound_cutout", type=float, default=0.05)
-        parser.add_argument("--do_occlusion", type=int, default=0)
+        #parser.add_argument("--do_occlusion", type=int, default=0)
         parser.add_argument("--center_bias", type=int, default=0)
         parser.add_argument("--center_focus", type=int, default=0)
         

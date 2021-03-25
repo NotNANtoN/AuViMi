@@ -74,7 +74,7 @@ def main(host, user, args):
         del args["lr"]
         del args["saturate_bound"]
         del args["lower_bound_cutout"]
-        del args["do_occlusion"]
+        #del args["do_occlusion"]
         del args["center_bias"]
         del args["center_focus"]
         del args["hidden_size"]
