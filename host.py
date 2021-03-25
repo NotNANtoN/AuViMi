@@ -68,8 +68,9 @@ try:
                     open_folder=False,
                     #start_image_train_iters=200,
                     save_progress=False,
-                    do_occlusion=args.do_occlusion,
+                    #do_occlusion=args.do_occlusion,
                     center_bias=args.center_bias,
+                    hidden_size=args.hidden_size,
                    )
     else:
         model = Imagine(
