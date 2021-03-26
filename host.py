@@ -170,7 +170,7 @@ finally:
         orig_name = os.path.join("host_in", f)
         new_name = os.path.join("host_in", str(i) + ".jpg")
         if orig_name != new_name:
-            subprocess.run(["mv", orig_name, new_name])
+            os.rename(orig_name, new_name)
     # save input movie
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
     # clean folders
