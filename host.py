@@ -63,15 +63,13 @@ try:
                     gradient_accumulate_every=args.gradient_accumulate_every,
                     batch_size=args.batch_size,
                     num_layers=args.num_layers,
-                    lr=args.lr,   # 3e-3 is unstable
+                    lr=args.lr,
                     lower_bound_cutout=args.lower_bound_cutout,                
                     open_folder=False,
-                    #start_image_train_iters=200,
                     save_progress=False,
-                    #do_occlusion=args.do_occlusion,
                     center_bias=args.center_bias,
                     hidden_size=args.hidden_size,
-                    avg_feats=args.avg_feats,
+                    averaging_weight=args.averaging_weight,
                    )
     else:
         model = Imagine(

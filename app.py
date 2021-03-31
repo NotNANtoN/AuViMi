@@ -74,11 +74,10 @@ def main(host, user, args):
         del args["lr"]
         del args["saturate_bound"]
         del args["lower_bound_cutout"]
-        #del args["do_occlusion"]
         del args["center_bias"]
         del args["center_focus"]
         del args["hidden_size"]
-        del args["avg_feats"]
+        del args["averaging_weight"]
 
     # start host process
     if args["run_local"]:
