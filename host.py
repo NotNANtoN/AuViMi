@@ -90,7 +90,7 @@ try:
                     center_bias=args.center_bias,
                     averaging_weight=args.averaging_weight,
                    )
-    elif args.gen_backbone == "bigsleep"::
+    elif args.gen_backbone == "bigsleep":
         model = Imagine(
                 save_progress=False,
                 save_best=False,
