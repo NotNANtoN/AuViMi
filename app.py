@@ -69,15 +69,19 @@ def main(host, user, args):
 
     # filter irrelevant args
     args = vars(args)
-    if args["gen_backbone"] == "bigsleep":
+    if args["gen_backbone"] != "deepdaze":
         del args["num_layers"]
-        del args["lr"]
-        del args["saturate_bound"]
-        del args["lower_bound_cutout"]
-        del args["center_bias"]
-        del args["center_focus"]
         del args["hidden_size"]
         del args["averaging_weight"]
+        if args["gen_backbone"] != "styleclip":
+            del args["lr"]
+            del args["saturate_bound"]
+            del args["lower_bound_cutout"]
+            del args["center_bias"]
+            del args["center_focus"]
+    if args["gen_backbone"] != "styleclip":
+        del args["style"]
+        
 
     # start host process
     if args["run_local"]:
@@ -190,7 +194,8 @@ def main(host, user, args):
                     new_img_time = time.time()
                 else:
                     continue
-                pil_img_large = pil_img_small.resize((512, 512))
+                
+                pil_img_large = pil_img_small.resize((512, 512)) if pil_img_small.size < 512 else pil_img_small
                 np_img_large = np.array(pil_img_large)
                 # convert to cv2 color space
                 img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)

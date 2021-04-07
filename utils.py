@@ -6,15 +6,19 @@ import argparse
 
 def get_args():
         parser = argparse.ArgumentParser()
-        parser.add_argument("--gen_backbone", default="deepdaze", choices=["deepdaze", "bigsleep"])
+        parser.add_argument("--gen_backbone", default="deepdaze", choices=["deepdaze", "bigsleep", "styleclip"])
         parser.add_argument("--size", type=int, default=256)
         parser.add_argument("--epochs", type=int, default=12)
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)
         parser.add_argument("--batch_size", type=int, default=32)
         parser.add_argument("--lr", type=float, default=1e-5)
 
+        # styleclip
+        parser.add_argument("--style", type=str, default="../stylegan2-ada-pytorch/VisionaryArt.pkl")
+        # deepdaze
         parser.add_argument("--hidden_size", type=int, default=512)
         parser.add_argument("--num_layers", type=int, default=32)
+        # deepdaze + styleclip
         parser.add_argument("--saturate_bound", type=int, default=0)
         parser.add_argument("--lower_bound_cutout", type=float, default=0.05)
         #parser.add_argument("--do_occlusion", type=int, default=0)

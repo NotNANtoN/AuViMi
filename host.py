@@ -41,14 +41,19 @@ if args.host == "abakus.ddnss.de":
     if args.gen_backbone == "deepdaze":
         sys.path.append("../deepdaze/")
         from deep_daze_repo.deep_daze.deep_daze import Imagine   
-    else:
+    elif args.gen_backbone == "bigsleep"::
         sys.path.append("../")
         from big_sleep_repo.big_sleep.big_sleep import Imagine
+    elif args.gen_backbone == "styleclip":
+        sys.path.append("../")
+        from StyleCLIP_modular.style_clip import Imagine
 else:
     if args.gen_backbone == "deepdaze":
         from deep_daze import Imagine   
-    else:
+    elif args.gen_backbone == "bigsleep":
         from big_sleep import Imagine
+    elif args.gen_backbone == "styleclip":
+        from style_clip import Imagine
 
 
 clean_host_folders()
@@ -71,7 +76,21 @@ try:
                     hidden_size=args.hidden_size,
                     averaging_weight=args.averaging_weight,
                    )
-    else:
+    elif args.gen_backbone == "styleclip":
+        model = Imagine(
+                    style=args.style,
+                    epochs = args.epochs,
+                    image_width=args.size,
+                    gradient_accumulate_every=args.gradient_accumulate_every,
+                    batch_size=args.batch_size,
+                    lr=args.lr,
+                    lower_bound_cutout=args.lower_bound_cutout,                
+                    open_folder=False,
+                    save_progress=False,
+                    center_bias=args.center_bias,
+                    averaging_weight=args.averaging_weight,
+                   )
+    elif args.gen_backbone == "bigsleep"::
         model = Imagine(
                 save_progress=False,
                 save_best=False,
