@@ -45,7 +45,7 @@ if args.host == "abakus.ddnss.de":
         sys.path.append("../")
         from big_sleep_repo.big_sleep.big_sleep import Imagine
     elif args.gen_backbone == "styleclip":
-        sys.path.append("../")
+        sys.path.append("../StyleCLIP_modular")
         from StyleCLIP_modular.style_clip import Imagine
 else:
     if args.gen_backbone == "deepdaze":
