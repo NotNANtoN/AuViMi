@@ -216,7 +216,7 @@ finally:
     time_now = timestr()
     path = os.path.join(os.getcwd(), folder, time_now)
     # save output movie
-    num_mirror_movie_files = [f for f in os.listdir(os.path.join(os.getcwd(), "host_out")) if f.endswith(".jpg")]
+    num_mirror_movie_files = len([f for f in os.listdir(os.path.join(os.getcwd(), "host_out")) if f.endswith(".jpg")])
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
     # rename host_in images for ffmpeg:
     files = os.listdir("host_in")
@@ -227,7 +227,7 @@ finally:
         if orig_name != new_name:
             os.rename(orig_name, new_name)
     # save input movie
-    num_input_movie_files = [f for f in os.listdir(os.path.join(os.getcwd(), "host_in")) if f.endswith(".jpg")]
+    num_input_movie_files = len([f for f in os.listdir(os.path.join(os.getcwd(), "host_in")) if f.endswith(".jpg")])
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
     
     # speed up input movie
