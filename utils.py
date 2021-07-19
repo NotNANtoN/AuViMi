@@ -6,7 +6,8 @@ import argparse
 
 def get_args():
         parser = argparse.ArgumentParser()
-        parser.add_argument("--gen_backbone", default="deepdaze", choices=["deepdaze", "bigsleep", "styleclip"])
+        #parser.add_argument("--gen_backbone", default="deepdaze", choices=["deepdaze", "bigsleep", "styleclip"])
+        parser.add_argument("--model_type", default="vqgan", choices=["siren", "vqgan", "conv"])
         parser.add_argument("--size", type=int, default=256)
         parser.add_argument("--epochs", type=int, default=12)
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)

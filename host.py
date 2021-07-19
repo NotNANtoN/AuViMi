@@ -37,23 +37,26 @@ args = get_args()
 
 # import experimental repositories if on abakus
 if args.host == "abakus.ddnss.de":
-    print(vars(args))
-    if args.gen_backbone == "deepdaze":
-        sys.path.append("../deepdaze/")
-        from deep_daze_repo.deep_daze.deep_daze import Imagine   
-    elif args.gen_backbone == "bigsleep":
-        sys.path.append("../")
-        from big_sleep_repo.big_sleep.big_sleep import Imagine
-    elif args.gen_backbone == "styleclip":
-        sys.path.append("../StyleCLIP_modular")
-        from StyleCLIP_modular.style_clip import Imagine
+    sys.path.append("../StyleCLIP_modular/")
+    from StyleCLIP_modular.style_clip.style_clip import Imagine
+    #print(vars(args))
+    #if args.gen_backbone == "deepdaze":
+    #    sys.path.append("../deepdaze/")
+    #    from deep_daze_repo.deep_daze.deep_daze import Imagine   
+    #elif args.gen_backbone == "bigsleep":
+    #    sys.path.append("../")
+    #    from big_sleep_repo.big_sleep.big_sleep import Imagine
+    #elif args.gen_backbone == "styleclip":
+    #    sys.path.append("../StyleCLIP_modular")
+    #    from StyleCLIP_modular.style_clip import Imagine
 else:
-    if args.gen_backbone == "deepdaze":
-        from deep_daze import Imagine   
-    elif args.gen_backbone == "bigsleep":
-        from big_sleep import Imagine
-    elif args.gen_backbone == "styleclip":
-        from style_clip import Imagine
+    from StyleCLIP_modular import Imagine
+    #if args.gen_backbone == "deepdaze":
+    #    from deep_daze import Imagine   
+    #elif args.gen_backbone == "bigsleep":
+    #    from big_sleep import Imagine
+    #elif args.gen_backbone == "styleclip":
+    #    from style_clip import Imagine
 
 
 clean_host_folders()
@@ -61,6 +64,35 @@ clean_host_folders()
 try:
     to_pil = torchvision.transforms.ToPILImage()
     
+    # pop out args for training
+    args = vars(args)
+    text = args.pop("text")
+    text_weight = args.pop("text_weight")
+    run_avg = args.pop("run_avg")
+    meta = args.pop("meta")
+    meta_lr = args.pop("meta_lr")
+    opt_steps = args.pop("opt_steps")
+    run_local = args.pop("run_local")
+    
+    
+    
+    model = Imagine(#model_type=args.model_type,
+                    #num_layers=args.num_layers,
+                    #hidden_size=args.hidden_size,
+                    #style=args.style,
+                    #epochs = args.epochs,
+                    #image_width=args.size,
+                    #gradient_accumulate_every=args.gradient_accumulate_every,
+                    #batch_size=args.batch_size,
+                    #lr=args.lr,
+                    #lower_bound_cutout=args.lower_bound_cutout,                
+                    open_folder=False,
+                    save_progress=False,
+                    #center_bias=args.center_bias,
+                    #averaging_weight=args.averaging_weight,
+                    **args,
+                   )
+    """
     if args.gen_backbone == "deepdaze":
         model = Imagine(
                     epochs = args.epochs,
@@ -100,13 +132,13 @@ try:
                 epochs=args.epochs,
                 gradient_accumulate_every=1,
                )
-
-    text_weight = args.text_weight
+    """
+    
     img_encoding = 0
     text_encoding = None
-    if args.text is not None and args.text != "":
-        print("Optimizing on ", args.text)
-        text_encoding = model.create_text_encoding(args.text)
+    if text is not None and text != "":
+        print("Optimizing on ", text)
+        text_encoding = model.create_text_encoding(text)
         text_encoding /= text_encoding.norm(dim=-1, keepdim=True)
     clip_encoding = text_encoding
     if text_weight == 1.0:
@@ -129,7 +161,7 @@ try:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
             print("updated img target: ", img_path)
             new_img_encoding = model.create_img_encoding(img_path)
-            img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
+            img_encoding = run_avg * img_encoding + (1 - run_avg) * new_img_encoding
             # merge image and text depending on conditions
             if text_encoding is None:
                 clip_encoding = img_encoding
@@ -142,22 +174,22 @@ try:
             continue
         
         # train
-        if args.meta:
+        if meta:
             # reptile(openai)/FOMAML(Finn) approach
             slow_weights = model.state_dict().copy()
             # update fast_weight for n steps
-            for _ in range(args.opt_steps):
+            for _ in range(opt_steps):
                 img_tensor, loss = model.train_step(0, count)
-            adapted_weights = model.state_dict()
+            fast_weights = model.state_dict()
             # take the slow_weights a step closer to the updated fast_weights 
-            # pseudoversion: new_slow_weights = slow_weights + args.meta_lr * (adapted_weights - slow_weights)
+            # pseudoversion: new_slow_weights = slow_weights + meta_lr * (fast_weights - slow_weights)
             for key in slow_weights:
-                new_slow_weights = slow_weights[key] + args.meta_lr * (adapted_weights[key] - slow_weights[key])
+                new_slow_weights = slow_weights[key] + meta_lr * (fast_weights[key] - slow_weights[key])
                 slow_weights[key] = new_slow_weights.type(slow_weights[key].dtype)
             # put the updated slow weights back in the model
             model.load_state_dict(slow_weights)    
         else:
-            for _ in range(args.opt_steps):
+            for _ in range(opt_steps):
                 img_tensor, loss = model.train_step(0, count)
 
         # save new img
@@ -166,7 +198,7 @@ try:
         count += 1
         img_pil.save(os.path.join(host_out, "new.jpg"), quality=95, subsampling=0)
         img_pil.save(os.path.join(host_out, str(count) + ".jpg"), quality=95, subsampling=0)
-        if args.run_local:
+        if run_local:
             img_pil.save(os.path.join(client_in, "new.jpg"), quality=95, subsampling=0)
         
 

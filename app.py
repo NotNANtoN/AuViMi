@@ -56,7 +56,6 @@ def main(host, user, args):
     
     clean_client_folders()
 
-
     # make sure that repo is cloned on host
     if not args.run_local:
         exists = subprocess.call(['ssh', host, 'test -e ' + pipes.quote(repo_name)]) == 0
@@ -69,19 +68,18 @@ def main(host, user, args):
 
     # filter irrelevant args
     args = vars(args)
-    if args["gen_backbone"] != "deepdaze":
-        del args["num_layers"]
-        del args["hidden_size"]
-        del args["averaging_weight"]
-        if args["gen_backbone"] != "styleclip":
-            del args["lr"]
-            del args["saturate_bound"]
-            del args["lower_bound_cutout"]
-            del args["center_bias"]
-            del args["center_focus"]
-    if args["gen_backbone"] != "styleclip":
-        del args["style"]
-        
+    #if args["gen_backbone"] != "deepdaze":
+    #    del args["num_layers"]
+    #    del args["hidden_size"]
+    #    del args["averaging_weight"]
+    #    if args["gen_backbone"] != "styleclip":
+    #        del args["lr"]
+    #        del args["saturate_bound"]
+    #        del args["lower_bound_cutout"]
+    #        del args["center_bias"]
+    #        del args["center_focus"]
+    #if args["gen_backbone"] != "styleclip":
+    #    del args["style"]
 
     # start host process
     if args["run_local"]:
