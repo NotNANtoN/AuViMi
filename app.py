@@ -99,7 +99,8 @@ def main(host, user, args):
         commands = [host_python_path, 'host.py']
     else:
         commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
-    args_cli = ["--" + key + '="' + str(args[key]) + '"' for key in args if (args[key] is not None and str(args[key]) != "")]
+    args_cli = ["--" + key + '="' + str(args[key]) + '"' for key in args if (args[key] is not None and str(args[key]) != "") and not isinstance(args[key], list)]
+    args_cli += args["model_args"]  #[] if len(args["model_args"]) == 0 else ["--" + m if i % 2 == 0 else m for i, m in enumerate(args["model_args"])]
     output_cmds = [">", "cli_out.txt"]
     all_cmds = commands + args_cli + output_cmds
     joined = " ".join(all_cmds)

@@ -79,6 +79,11 @@ try:
     user = args.pop("user")
     mode = args.pop("mode")
     
+    # read additional model args correctly as they just come in a list
+    model_args = args.pop("model_args")
+    for i in range(0, len(model_args), 2):
+        args[model_args[i]] = args[model_args[i+1]]
+    
     
     
     model = Imagine(#model_type=args.model_type,
