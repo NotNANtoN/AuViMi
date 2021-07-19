@@ -82,7 +82,7 @@ try:
     # read additional model args correctly as they just come in a list
     model_args = args.pop("model_args")
     for i in range(0, len(model_args), 2):
-        args[model_args[i]] = args[model_args[i+1]]
+        args[model_args[i]] = model_args[i+1]
     
     
     
