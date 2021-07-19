@@ -147,6 +147,14 @@ def main(host, user, args):
             x_target = sideX
             y_target = int(y / x * x_target)   
         frame = frame.resize((x_target, y_target))
+        width, height = frame.size   # Get dimensions
+        # crop center
+        left = (width - new_width)/2
+        top = (height - new_height)/2
+        right = (width + new_width)/2
+        bottom = (height + new_height)/2
+        # Crop the center of the image
+        frame = frame.crop((left, top, right, bottom))
         
         # return on escape
         key = cv2.waitKey(1)
