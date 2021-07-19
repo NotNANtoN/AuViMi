@@ -153,6 +153,9 @@ try:
     newest_img = None
     count = 0
     
+    # clean once more now to remove unnecessary starting images that were taking during setup of imagine model
+    clean_host_folders()
+    
     
     while not os.path.exists("STOP.txt"):
         host_loop_time = time.time()
