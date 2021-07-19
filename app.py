@@ -149,10 +149,10 @@ def main(host, user, args):
         frame = frame.resize((x_target, y_target))
         width, height = frame.size   # Get dimensions
         # crop center
-        left = (width - new_width)/2
-        top = (height - new_height)/2
-        right = (width + new_width)/2
-        bottom = (height + new_height)/2
+        left = (width - sideX)/2
+        top = (height - sideY)/2
+        right = (width + sideX)/2
+        bottom = (height + sideY)/2
         # Crop the center of the image
         frame = frame.crop((left, top, right, bottom))
         
