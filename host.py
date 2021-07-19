@@ -73,6 +73,11 @@ try:
     meta_lr = args.pop("meta_lr")
     opt_steps = args.pop("opt_steps")
     run_local = args.pop("run_local")
+    # only used in app, pop them to not have them in Imagine:
+    python_path = args.pop("python_path")
+    host = args.pop("host")
+    user = args.pop("user")
+    mode = args.pop("mode")
     
     
     
