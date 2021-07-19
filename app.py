@@ -33,7 +33,7 @@ def main(host, user, args):
 
     # small fix for myself
     if args.host == "abakus.ddnss.de" and not args.run_local:
-        args.python_path = "/home/anton/anaconda3/bin/python"
+        args.python_path = "/usr/bin/python3"  #"/home/anton/anaconda3/bin/python"
 
     repo_name = "AuViMi"
     total_path = "~/AuViMi/"

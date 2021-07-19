@@ -38,7 +38,7 @@ args = get_args()
 # import experimental repositories if on abakus
 if args.host == "abakus.ddnss.de":
     sys.path.append("../StyleCLIP_modular/")
-    from StyleCLIP_modular.style_clip.style_clip import Imagine
+    from style_clip.style_clip import Imagine
     #print(vars(args))
     #if args.gen_backbone == "deepdaze":
     #    sys.path.append("../deepdaze/")
@@ -50,7 +50,7 @@ if args.host == "abakus.ddnss.de":
     #    sys.path.append("../StyleCLIP_modular")
     #    from StyleCLIP_modular.style_clip import Imagine
 else:
-    from StyleCLIP_modular import Imagine
+    from style_clip import Imagine
     #if args.gen_backbone == "deepdaze":
     #    from deep_daze import Imagine   
     #elif args.gen_backbone == "bigsleep":
