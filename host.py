@@ -227,7 +227,7 @@ finally:
     num_mirror_movie_files = len([f for f in os.listdir(os.path.join(os.getcwd(), "host_out")) if f.endswith(".jpg")])
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4", "-hide_banner", "-loglevel", "error"])
     # rename host_in images for ffmpeg:
-    files = os.listdir("host_in")
+    files = [f for f in os.listdir("host_in") if f.endswith(".jpg")]
     files = sorted(files, key=lambda f: int(f[:-4]))
     for f, i in zip(files, range(len(files))):
         orig_name = os.path.join("host_in", f)
