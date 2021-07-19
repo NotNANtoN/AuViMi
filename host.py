@@ -17,7 +17,7 @@ def clean_host_folders():
     clean_folder("host_out")
     
 def timestr():
-    return time.strftime("%x_%X", time.gmtime()).replace("/", "_")
+    return time.strftime("%x_%X", time.gmtime()).replace("/", "_").replace(" ", "_")
     
 
 kill_old_process(create_new=True)
@@ -216,6 +216,7 @@ finally:
     time_now = timestr()
     path = os.path.join(os.getcwd(), folder, time_now)
     # save output movie
+    num_mirror_movie_files = [f for f in os.listdir(os.path.join(os.getcwd(), "host_out")) if f.endswith(".jpg")]
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
     # rename host_in images for ffmpeg:
     files = os.listdir("host_in")
@@ -226,7 +227,23 @@ finally:
         if orig_name != new_name:
             os.rename(orig_name, new_name)
     # save input movie
+    num_input_movie_files = [f for f in os.listdir(os.path.join(os.getcwd(), "host_in")) if f.endswith(".jpg")]
     subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
+    
+    # speed up input movie
+    # with audio:
+    # ffmpeg -i input.mkv -filter_complex "[0:v]setpts=0.5*PTS[v];[0:a]atempo=2.0[a]" -map "[v]" -map "[a]" output.mkv
+    # without audio:
+    # ffmpeg -i 07_19_21_11\ 49\ 38_input.mp4 -filter_complex "[0:v]setpts=0.5*PTS[v]" -map "[v]"  output.mp4
+    fps_ratio = num_mirror_movie_files / num_input_movie_files
+    # do speedup of input
+    subprocess.run(["ffmpeg", "-i", path + "_input.mp4", "-filter_complex", f'"[0:v]setpts={fps_ratio}*PTS[v]"', "-map", '"[v]"',  path + "_faster_input.mp4"])
+    
+    
+    # merge movies:
+    # ffmpeg -i 07_19_21_11\ 49\ 38_input.mp4 -i 07_19_21_11\ 49\ 38_mirror.mp4 -filter_complex hstack stacked.mp4
+    subprocess.run(["ffmpeg", "-i", path + "_faster_input.mp4", "-i", path + "_mirror.mp4", "-filter_complex", "hstack", path + "_stacked.mp4"])
+    
     # clean folders
     #clean_host_folders()
     # kill process

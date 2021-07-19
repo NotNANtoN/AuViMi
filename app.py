@@ -38,6 +38,8 @@ def main(host, user, args):
     mode = args.pop("mode")
     run_local = args["run_local"]
     text_weight = args["text_weight"]
+    sideX = args["sideX"]
+    sideY = args["sideY"]
 
 
     # small fix for myself
@@ -139,10 +141,10 @@ def main(host, user, args):
         # resize to have smaller transfer
         x, y = frame.size
         if x > y:
-            y_target = resize_size
+            y_target = sideY
             x_target = int(x / y * y_target)
         else:
-            x_target = resize_size
+            x_target = sideX
             y_target = int(y / x * x_target)   
         frame = frame.resize((x_target, y_target))
         
@@ -204,7 +206,8 @@ def main(host, user, args):
                 else:
                     continue
                 
-                pil_img_large = pil_img_small.resize((512, 512)) if pil_img_small.size < 512 else pil_img_small
+                #pil_size = pil_img_small.size
+                pil_img_large = pil_img_small #pil_img_small.resize((512, 512)) if pil_img_small.size < 512 else pil_img_small
                 np_img_large = np.array(pil_img_large)
                 # convert to cv2 color space
                 img = cv2.cvtColor(np_img_large, cv2.COLOR_RGB2BGR)
