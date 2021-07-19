@@ -237,7 +237,7 @@ finally:
     # ffmpeg -i 07_19_21_11\ 49\ 38_input.mp4 -filter_complex "[0:v]setpts=0.5*PTS[v]" -map "[v]"  output.mp4
     fps_ratio = num_mirror_movie_files / num_input_movie_files
     # do speedup of input
-    subprocess.run(["ffmpeg", "-i", path + "_input.mp4", "-filter_complex", f"[0:v]setpts={fps_ratio}*PTS[v]", "-map", '"[v]"',  path + "_faster_input.mp4", "-hide_banner", "-loglevel", "error"])
+    subprocess.run(["ffmpeg", "-i", path + "_input.mp4", "-filter_complex", f"[0:v]setpts={fps_ratio}*PTS[v]", "-map", '[v]',  path + "_faster_input.mp4", "-hide_banner", "-loglevel", "error"])
     
     
     # merge movies:
