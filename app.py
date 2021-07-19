@@ -31,9 +31,19 @@ def clean_client_folders():
 
 def main(host, user, args):
 
+    args = vars(args)
+    python_path = args.pop("python_path")
+    host = args.pop("host")
+    user = args.pop("user")
+    mode = args.pop("mode")
+    run_local = args["run_local"]
+    text_weight = args["text_weight"]
+
+
     # small fix for myself
-    if args.host == "abakus.ddnss.de" and not args.run_local:
-        args.python_path = "/usr/bin/python3"  #"/home/anton/anaconda3/bin/python"
+    if host == "abakus.ddnss.de" and not run_local:
+        python_path = "/usr/bin/python3"  #"/home/anton/anaconda3/bin/python"
+
 
     repo_name = "AuViMi"
     total_path = "~/AuViMi/"
@@ -41,7 +51,7 @@ def main(host, user, args):
     client_in = os.path.join("client_in")
     host_in = os.path.join("host_in")
     host_out = os.path.join("host_out")
-    host_python_path = args.python_path
+    host_python_path = python_path
     host_scp_path = user + "@" + host + ":"
     
     resize_size = 224
@@ -57,7 +67,7 @@ def main(host, user, args):
     clean_client_folders()
 
     # make sure that repo is cloned on host
-    if not args.run_local:
+    if not run_local:
         exists = subprocess.call(['ssh', host, 'test -e ' + pipes.quote(repo_name)]) == 0
         print("Repo exists: ", exists)
         if not exists:
@@ -67,7 +77,8 @@ def main(host, user, args):
             subprocess.run(['ssh', host, 'cd AuViMi;', 'git', 'pull'])
 
     # filter irrelevant args
-    args = vars(args)
+   
+    
     #if args["gen_backbone"] != "deepdaze":
     #    del args["num_layers"]
     #    del args["hidden_size"]
@@ -90,7 +101,7 @@ def main(host, user, args):
     output_cmds = [">", "cli_out.txt"]
     all_cmds = commands + args_cli + output_cmds
     joined = " ".join(all_cmds)
-    if args["run_local"]:
+    if run_local:
         host_process = subprocess.Popen(joined, shell=True, stdout=subprocess.PIPE)
     else:
         host_process = subprocess.Popen(all_cmds, shell=False, stdout=subprocess.PIPE)
@@ -108,7 +119,7 @@ def main(host, user, args):
     previous = 0
     count = 0
     
-    move_pic = True if args["mode"] == "stream" else False
+    move_pic = True if mode == "stream" else False
     old_hash = None
     new_img_time = time.time()
     
@@ -141,7 +152,7 @@ def main(host, user, args):
             print("Pressed Escape. Quitting!")
             break
             
-        if args["mode"] == "pic" and key == ord("p"):
+        if mode == "pic" and key == ord("p"):
             move_pic = True
 
         if move_pic == True:
@@ -158,23 +169,23 @@ def main(host, user, args):
 
             # display img
             #rgb_frame = cv2.cvtColor(frame_np, cv2.COLOR_BGR2RGB)
-            if args["mode"] == "pic":
+            if mode == "pic":
                 transfer_cmd = subprocess.run
                 move_pic = False
                 cv2.imshow("Optimization goal", frame_cv2)
             else:
                 transfer_cmd = subprocess.Popen
-            if args["run_local"]:
+            if run_local:
                 frame.save(target_path, quality=95, subsampling=0)
             else:
                 transfer_cmd(rsync_cmds + [img_path, host_scp_path + total_path + target_path])
         
-        if args["text_weight"] != 1.0:
+        if text_weight != 1.0:
             cv2.imshow("Input", frame_cv2)
 
         
         # load new image from host asynchronously
-        if not args["run_local"]:
+        if not run_local:
             subprocess.Popen(rsync_cmds + [host_scp_path + total_path + host_path, client_path])
         
         if os.path.exists(client_path):
