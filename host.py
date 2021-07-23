@@ -82,7 +82,12 @@ try:
     # read additional model args correctly as they just come in a list
     model_args = args.pop("model_args")
     for i in range(0, len(model_args), 2):
-        args[model_args[i]] = model_args[i+1]
+        content = model_args[i+1]
+        try:
+            content = float(content)
+        except ValueError:
+            pass
+        args[model_args[i]] = content
     
     
     

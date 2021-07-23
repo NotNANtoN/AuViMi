@@ -29,6 +29,66 @@ def clean_client_folders():
     clean_folder("client_out")
 
 
+class AudioRecorder():
+    # Audio class based on pyAudio and Wave
+    def __init__(self):
+        self.open = True
+        self.rate = 22050  #44100
+        self.frames_per_buffer = 1024
+        self.channels = 2
+        self.format = pyaudio.paInt16
+        self.audio_filename = "temp_audio.wav"
+        self.audio = pyaudio.PyAudio()
+        self.stream = self.audio.open(format=self.format,
+                                      channels=self.channels,
+                                      rate=self.rate,
+                                      input=True,
+                                      frames_per_buffer=self.frames_per_buffer)
+        self.audio_frames = []
+
+
+    # Audio starts being recorded
+    def record(self):
+        self.stream.start_stream()
+        while(self.open == True):
+            data = self.stream.read(self.frames_per_buffer) 
+            self.audio_frames.append(data)
+            if self.open==False:
+                break
+
+    # Finishes the audio recording therefore the thread too    
+    def stop(self):
+        if self.open==True:
+            self.open = False
+            self.stream.stop_stream()
+            self.stream.close()
+            self.audio.terminate()
+
+            waveFile = wave.open(self.audio_filename, 'wb')
+            waveFile.setnchannels(self.channels)
+            waveFile.setsampwidth(self.audio.get_sample_size(self.format))
+            waveFile.setframerate(self.rate)
+            waveFile.writeframes(b''.join(self.audio_frames))
+            waveFile.close()
+
+        pass
+
+    # Launches the audio recording function using a thread
+    def start(self):
+        audio_thread = threading.Thread(target=self.record)
+        audio_thread.start()
+
+
+def start_audio_recording(filename):
+
+    global audio_thread
+
+    audio_thread = AudioRecorder()
+    audio_thread.start()
+
+    return filename
+
+
 def main(host, user, args):
 
     args = vars(args)
@@ -98,6 +158,7 @@ def main(host, user, args):
     if args["run_local"]:
         commands = [host_python_path, 'host.py']
     else:
+        #commands = ['ssh', host, 'cd AuViMi;', "CUDA_VISIBLE_DEVICES= ", host_python_path, 'host.py']
         commands = ['ssh', host, 'cd AuViMi;', host_python_path, 'host.py']
     args_cli = ["--" + key + '="' + str(args[key]) + '"' for key in args if (args[key] is not None and str(args[key]) != "") and not isinstance(args[key], list)]
     args_cli += args["model_args"]  #[] if len(args["model_args"]) == 0 else ["--" + m if i % 2 == 0 else m for i, m in enumerate(args["model_args"])]

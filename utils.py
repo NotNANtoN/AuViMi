@@ -12,8 +12,8 @@ def get_args():
         parser.add_argument("--sideY", type=int, default=256)
         parser.add_argument("--epochs", type=int, default=12)
         parser.add_argument("--gradient_accumulate_every", type=int, default=1)
-        parser.add_argument("--batch_size", type=int, default=32)
-        parser.add_argument("--lr", type=float, default=1e-5)
+        parser.add_argument("--batch_size", type=int, default=8)
+        parser.add_argument("--lr", type=float, default=0.1)#1e-5)
 
         # styleclip
         parser.add_argument("--style", type=str, default="../stylegan2-ada-pytorch/VisionaryArt.pkl")
@@ -30,7 +30,7 @@ def get_args():
         
         parser.add_argument("--meta", type=int, default=0)
         parser.add_argument("--meta_lr", type=float, default=0.1) 
-        parser.add_argument("--opt_steps", type=int, default=5)
+        parser.add_argument("--opt_steps", type=int, default=1)
         parser.add_argument("--text", type=str, default="")
         parser.add_argument("--text_weight", type=float, default=0.5)
         parser.add_argument("--run_avg", type=float, default=0.0, help="What fraction of the old encoding to keep.")
