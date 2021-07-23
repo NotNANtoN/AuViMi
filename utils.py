@@ -7,7 +7,7 @@ import argparse
 def get_args():
         parser = argparse.ArgumentParser()
         #parser.add_argument("--gen_backbone", default="deepdaze", choices=["deepdaze", "bigsleep", "styleclip"])
-        parser.add_argument("--model_type", default="vqgan", choices=["siren", "vqgan", "conv", "raw"])
+        parser.add_argument("--model_type", default="vqgan", choices=["siren", "vqgan", "conv", "image"])
         parser.add_argument("--sideX", type=int, default=256)
         parser.add_argument("--sideY", type=int, default=256)
         parser.add_argument("--epochs", type=int, default=12)
