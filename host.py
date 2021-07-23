@@ -84,9 +84,13 @@ try:
     for i in range(0, len(model_args), 2):
         content = model_args[i+1]
         try:
-            content = float(content)
+            content = int(content)
         except ValueError:
-            pass
+            try:
+                content = float(content)
+            except ValueError:
+                pass
+            
         args[model_args[i]] = content
     
     
