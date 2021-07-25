@@ -183,7 +183,7 @@ try:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
             print("updated img target: ", img_path)
             new_img_encoding = model.create_img_encoding(img_path)
-            img_encoding = new_imc_encoding#run_avg * img_encoding + (1 - run_avg) * new_img_encoding
+            img_encoding = new_img_encoding#run_avg * img_encoding + (1 - run_avg) * new_img_encoding
             # merge image and text depending on conditions
             if text_encoding is None:
                 clip_encoding = img_encoding
