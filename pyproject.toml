@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "auvimi"
+version = "2.0.0"
+description = "Audio-Visual Mirror: Real-time CLIP-based neural dreaming"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Anton Wiehe", email = "anton.wiehe@gmail.com" }
+]
+dependencies = [
+    "torch",
+    "torchvision",
+    "deep-daze>=0.6.0",
+    "joblib",
+    "opencv-python",
+    "Pillow",
+    "fastapi",
+    "uvicorn",
+    "websockets",
+    "python-multipart",
+    # big-sleep is added as a direct reference below
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "mypy"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/NotNANtoN/AuViMi"
+"Bug Tracker" = "https://github.com/NotNANtoN/AuViMi/issues"
+
+[tool.hatch.envs.default]
+dependencies = [
+    "big-sleep @ git+https://github.com/NotNANtoN/big-sleep@main"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+force-include = { "server.py" = "auvimi/server.py", "client.py" = "auvimi/client.py", "utils.py" = "auvimi/utils.py" }
+
