@@ -33,6 +33,9 @@ model_kwargs = {
     "batch_size": args.batch_size,
     "num_layers": args.num_layers,
     "lr": args.lr,
+    "use_gabor": bool(args.use_gabor),
+    "gabor_scale": args.gabor_scale,
+    "model_name": args.clip_model,
     "open_folder": False,
     "save_progress": False,
 }
@@ -45,11 +48,11 @@ if device == "mps":
     model.to(dtype=torch.bfloat16)
     print("Model moved to MPS in bfloat16.")
 
-# Use modern torch.compile if available (Torch 2.0+)
-if device != "mps":
+# Use modern torch.compile only for CUDA (Stable)
+if device == "cuda":
     try:
         if hasattr(model, 'model'):
-            print("Compiling SIREN model with torch.compile...")
+            print("Compiling SIREN model with torch.compile (inductor)...")
             model.model = torch.compile(model.model)
     except Exception as e:
         print(f"Note: Could not use torch.compile: {e}")
@@ -89,16 +92,16 @@ async def websocket_endpoint(websocket: WebSocket):
             start_time = time.time()
             data = await websocket.receive_bytes()
             
-            temp_path = f"/tmp/auvimi_input_{os.getpid()}.jpg"
-            with open(temp_path, "wb") as f:
-                f.write(data)
+            # Load image directly from bytes (no disk IO)
+            img_input = Image.open(io.BytesIO(data)).convert("RGB")
             
             io_read_time = time.time() - start_time
                 
             # 2. Update Encoding
             encode_start = time.time()
             if text_weight < 1.0:
-                new_img_encoding = model.create_img_encoding(temp_path)
+                # Pass PIL image directly
+                new_img_encoding = model.create_img_encoding(img_input)
                 
                 # Use bfloat16 for MPS
                 target_dtype = torch.bfloat16 if device == "mps" else torch.float32
@@ -121,14 +124,19 @@ async def websocket_endpoint(websocket: WebSocket):
             # 3. Train Step(s)
             train_start = time.time()
             img_tensor = None
+            last_avg_timings = {}
+            current_loss = 0
             for _ in range(args.opt_steps):
-                img_tensor, loss = model.train_step(0, iteration_count)
+                img_tensor, loss, last_avg_timings = model.train_step(0, iteration_count)
+                current_loss = loss.item()
                 iteration_count += 1
             train_time = time.time() - train_start
             
             # 4. Return Result
             write_start = time.time()
             if img_tensor is not None:
+                # Ensure we don't have NaNs before casting
+                img_tensor = torch.nan_to_num(img_tensor, nan=0.5)
                 img_np = np.uint8(img_tensor.cpu().detach().squeeze(0).permute(1, 2, 0).numpy() * 255)
                 img_pil = Image.fromarray(img_np)
                 
@@ -140,7 +148,14 @@ async def websocket_endpoint(websocket: WebSocket):
             io_write_time = time.time() - write_start
             
             total_time = time.time() - start_time
-            print(f"Loop: {total_time:.3f}s | Read: {io_read_time:.3f}s | Encode: {encode_time:.3f}s | Train: {train_time:.3f}s | Write: {io_write_time:.3f}s")
+            
+            # Detailed Train Breakdown
+            t_siren = last_avg_timings.get('siren', 0)
+            t_clip = last_avg_timings.get('clip', 0)
+            t_cut = last_avg_timings.get('cutouts', 0)
+            t_back = last_avg_timings.get('backward', 0)
+            
+            print(f"Loop: {total_time:.3f}s | Encode: {encode_time:.3f}s | Train: {train_time:.3f}s (SIREN: {t_siren:.3f}s, CLIP: {t_clip:.3f}s, Cut: {t_cut:.3f}s, Back: {t_back:.3f}s) | Loss: {current_loss:.4f}")
                 
     except WebSocketDisconnect:
         print("Client disconnected")

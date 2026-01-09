@@ -2,12 +2,14 @@ import os
 import subprocess
 import sys
 import random
+import math
+import time
+import resource
 from datetime import datetime
 from pathlib import Path
 
 import torch
 import torch.nn.functional as F
-from siren_pytorch import SirenNet, SirenWrapper
 from torch import nn
 import torch.amp as amp
 from torch_optimizer import DiffGrad, AdamP
@@ -23,7 +25,121 @@ from tqdm import trange, tqdm
 from .clip import load, tokenize
 
 
+# =============================================================================
+# Activation Functions for Implicit Neural Representations
+# =============================================================================
+
+class SineActivation(nn.Module):
+    """Standard SIREN activation: sin(w0 * x)"""
+    def __init__(self, w0=30.0):
+        super().__init__()
+        self.w0 = w0
+    
+    def forward(self, x):
+        return torch.sin(self.w0 * x)
+
+
+class GaborActivation(nn.Module):
+    """
+    WIRE activation: sin(w0 * x) * exp(-s0 * x^2)
+    Gabor wavelet with Gaussian envelope for local support.
+    """
+    def __init__(self, w0=10.0, s0=10.0):
+        super().__init__()
+        self.w0 = w0
+        self.s0 = s0
+    
+    def forward(self, x):
+        return torch.sin(self.w0 * x) * torch.exp(-self.s0 * (x ** 2))
+
+
+class INRLayer(nn.Module):
+    """Single layer for implicit neural representation with configurable activation."""
+    def __init__(self, in_features, out_features, activation, is_first=False, w0=30.0):
+        super().__init__()
+        self.linear = nn.Linear(in_features, out_features)
+        self.activation = activation
+        
+        # SIREN-style initialization
+        with torch.no_grad():
+            bound = 1/in_features if is_first else math.sqrt(6/in_features)/w0
+            self.linear.weight.uniform_(-bound, bound)
+    
+    def forward(self, x):
+        return self.activation(self.linear(x))
+
+
+class INRNet(nn.Module):
+    """
+    Exact functional clone of siren-pytorch.SirenNet with added Gabor support.
+    Supports different activations: 'siren' (sine) or 'gabor' (WIRE).
+    """
+    def __init__(self, dim_in, dim_hidden, dim_out, num_layers, activation='siren',
+                 w0=30.0, w0_initial=30.0, s0=10.0, use_bias=True):
+        super().__init__()
+        self.num_layers = num_layers
+        self.w0 = w0
+        
+        # Build activation factory
+        def make_activation(is_first=False):
+            freq = w0_initial if is_first else w0
+            if activation == 'gabor':
+                return GaborActivation(w0=freq, s0=s0)
+            return SineActivation(w0=freq)
+        
+        self.layers = nn.ModuleList([])
+        for ind in range(num_layers):
+            is_first = ind == 0
+            # For the first layer, w0 is w0_initial, otherwise it's the hidden w0
+            current_w0 = w0_initial if is_first else w0
+            layer_dim_in = dim_in if is_first else dim_hidden
+
+            self.layers.append(INRLayer(
+                in_features=layer_dim_in,
+                out_features=dim_hidden,
+                activation=make_activation(is_first),
+                is_first=is_first,
+                w0=current_w0
+            ))
+        
+        # Final linear layer (exact match to siren-pytorch)
+        self.last_layer = nn.Linear(dim_hidden, dim_out, bias=use_bias)
+        with torch.no_grad():
+            bound = math.sqrt(6 / dim_hidden) / w0
+            self.last_layer.weight.uniform_(-bound, bound)
+    
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return self.last_layer(x)
+
+
+class INRWrapper(nn.Module):
+    """Wraps INRNet to generate images from a coordinate grid."""
+    def __init__(self, net, image_width, image_height):
+        super().__init__()
+        self.net = net
+        self.image_width = image_width
+        self.image_height = image_height
+        
+        # Pre-compute normalized coordinate grid [-1, 1]
+        y = torch.linspace(-1, 1, steps=image_height)
+        x = torch.linspace(-1, 1, steps=image_width)
+        grid = torch.stack(torch.meshgrid(y, x, indexing='ij'), dim=-1)
+        self.register_buffer('grid', grid.reshape(-1, 2))
+    
+    def forward(self, img=None):
+        out = self.net(self.grid)
+        out = out.reshape(1, self.image_height, self.image_width, -1).permute(0, 3, 1, 2)
+        out = norm_siren_output(out)
+        if img is not None:
+            return F.mse_loss(out, img)
+        return out
+
+
+# =============================================================================
 # Helpers
+# =============================================================================
 
 def exists(val):
     return val is not None
@@ -139,6 +255,8 @@ class DeepDaze(nn.Module):
             center_focus=2,
             hidden_size=256,
             averaging_weight=0.3,
+            use_gabor=False,
+            gabor_scale=10.0,
     ):
         super().__init__()
         # load clip
@@ -156,21 +274,18 @@ class DeepDaze(nn.Module):
         w0 = default(theta_hidden, 30.)
         w0_initial = default(theta_initial, 30.)
 
-        siren = SirenNet(
+        activation = 'gabor' if use_gabor else 'siren'
+        siren = INRNet(
             dim_in=2,
             dim_hidden=hidden_size,
-            num_layers=num_layers,
             dim_out=3,
-            use_bias=True,
+            num_layers=num_layers,
+            activation=activation,
             w0=w0,
-            w0_initial=w0_initial
+            w0_initial=w0_initial,
+            s0=gabor_scale,
         )
-
-        self.model = SirenWrapper(
-            siren,
-            image_width=image_width,
-            image_height=image_width
-        )
+        self.model = INRWrapper(siren, image_width=image_width, image_height=image_width)
 
         self.saturate_bound = saturate_bound
         self.saturate_limit = 0.75  # cutouts above this value lead to destabilization
@@ -184,6 +299,18 @@ class DeepDaze(nn.Module):
         self.center_focus = center_focus
         self.averaging_weight = averaging_weight
         
+    def reset_weights(self):
+        """Reset all weights in the SIREN/INR model."""
+        def _reset(m):
+            if hasattr(m, '_init_weights'):
+                m._init_weights()
+            elif isinstance(m, nn.Linear):
+                # Fallback for standard layers
+                nn.init.kaiming_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+        self.model.net.apply(_reset)
+
     def sample_sizes(self, lower, upper, width, gauss_mean):
         if self.gauss_sampling:
             gauss_samples = torch.zeros(self.batch_size).normal_(mean=gauss_mean, std=self.gauss_std)
@@ -197,13 +324,25 @@ class DeepDaze(nn.Module):
         return sizes
 
     def forward(self, text_embed, return_loss=True, dry_run=False):
+        # Profiling dictionary
+        self.last_timings = {}
+        
+        def sync():
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            elif torch.backends.mps.is_available():
+                torch.mps.synchronize()
+
+        start_siren = time.time()
         out = self.model()
-        out = norm_siren_output(out)
+        sync()
+        self.last_timings['siren'] = time.time() - start_siren
 
         if not return_loss:
             return out
                 
         # determine upper and lower sampling bound
+        start_cutouts = time.time()
         width = out.shape[-1]
         lower_bound = self.lower_bound_cutout
         if self.saturate_bound:
@@ -222,11 +361,16 @@ class DeepDaze(nn.Module):
 
         # normalize
         image_pieces = torch.cat([self.normalize_image(piece) for piece in image_pieces])
+        sync()
+        self.last_timings['cutouts'] = time.time() - start_cutouts
         
         # calc image embedding
+        start_clip = time.time()
         device_type = "cuda" if "cuda" in str(self.perceptor.visual.conv1.weight.device) else "mps" if "mps" in str(self.perceptor.visual.conv1.weight.device) else "cpu"
         with amp.autocast(device_type=device_type, enabled=True):
             image_embed = self.perceptor.encode_image(image_pieces)
+        sync()
+        self.last_timings['clip'] = time.time() - start_clip
             
         # calc loss
         # loss over averaged features of cutouts
@@ -289,6 +433,8 @@ class Imagine(nn.Module):
             hidden_size=256,
             save_gif=False,
             save_video=False,
+            use_gabor=False,
+            gabor_scale=10.0,
     ):
 
         super().__init__()
@@ -376,6 +522,8 @@ class Imagine(nn.Module):
                 center_focus=center_focus,
                 hidden_size=hidden_size,
                 averaging_weight=averaging_weight,
+                use_gabor=use_gabor,
+                gabor_scale=gabor_scale,
             ).to(self.device)
         self.model = model
         
@@ -417,6 +565,7 @@ class Imagine(nn.Module):
 
         self.save_gif = save_gif
         self.save_video = save_video
+        self.measured_memory = False
             
     def create_clip_encoding(self, text=None, img=None, encoding=None):
         self.text = text
@@ -506,18 +655,32 @@ class Imagine(nn.Module):
 
     def train_step(self, epoch, iteration):
         total_loss = 0
+        all_timings = []
+
+        def sync():
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            elif torch.backends.mps.is_available():
+                torch.mps.synchronize()
 
         device_type = "cuda" if "cuda" in str(self.device) else "mps" if "mps" in str(self.device) else "cpu"
         for _ in range(self.gradient_accumulate_every):
             with amp.autocast(device_type=device_type, enabled=True):
                 out, loss = self.model(self.clip_encoding)
+            
+            t_fwd = self.model.last_timings.copy()
+            
             loss = loss / self.gradient_accumulate_every
             total_loss += loss
             
+            start_back = time.time()
             if self.use_scaler:
                 self.scaler.scale(loss).backward()
             else:
                 loss.backward()
+            sync()
+            t_fwd['backward'] = time.time() - start_back
+            all_timings.append(t_fwd)
         
         out = out.cpu().float().clamp(0., 1.)
         
@@ -529,10 +692,41 @@ class Imagine(nn.Module):
             
         self.optimizer.zero_grad()
 
+        # Safety Check: If we hit NaNs, the LR is too high or weights exploded
+        if torch.isnan(loss):
+            print("\n!!! WARNING: Loss is NaN. Optimization exploded. !!!")
+            print("Action: Resetting model weights and suggesting lower learning rate.")
+            self.reset_weights()
+
+        if not self.measured_memory:
+            self.measured_memory = True
+            sync()
+            ram = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            # On macOS, ru_maxrss is in bytes, on Linux it is in KiB
+            ram_mib = ram / (1024 * 1024) if sys.platform == 'darwin' else ram / 1024
+            
+            vram_mib = 0
+            if torch.cuda.is_available():
+                vram_mib = torch.cuda.memory_allocated() / (1024 * 1024)
+            elif torch.backends.mps.is_available():
+                try:
+                    vram_mib = torch.mps.current_allocated_memory() / (1024 * 1024)
+                except:
+                    vram_mib = -1
+            
+            vram_str = f"{vram_mib:.2f} MiB" if vram_mib >= 0 else "Unsupported"
+            print(f"\n[Memory Report After First Step] RAM: {ram_mib:.2f} MiB | VRAM: {vram_str}")
+
         if (iteration % self.save_every == 0) and self.save_progress:
             self.save_image(epoch, iteration, img=out)
 
-        return out, total_loss
+        # Average timings
+        avg_timings = {}
+        if all_timings:
+            for key in all_timings[0].keys():
+                avg_timings[key] = sum(t[key] for t in all_timings) / len(all_timings)
+
+        return out, total_loss, avg_timings
     
     def get_img_sequence_number(self, epoch, iteration):
         current_total_iterations = epoch * self.iterations + iteration
@@ -599,7 +793,7 @@ class Imagine(nn.Module):
             for epoch in trange(self.epochs, desc='epochs'):
                 pbar = trange(self.iterations, desc='iteration')
                 for i in pbar:
-                    _, loss = self.train_step(epoch, i)
+                    _, loss, _ = self.train_step(epoch, i)
                     pbar.set_description(f'loss: {loss.item():.2f}')
 
                 # Update clip_encoding per epoch if we are creating a story

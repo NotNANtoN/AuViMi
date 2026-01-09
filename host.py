@@ -70,6 +70,9 @@ try:
                     save_progress=False,
                     do_occlusion=args.do_occlusion,
                     center_bias=args.center_bias,
+                    use_gabor=bool(args.use_gabor),
+                    gabor_scale=args.gabor_scale,
+                    model_name=args.clip_model,
                    )
     else:
         model = Imagine(
@@ -128,7 +131,7 @@ try:
             slow_weights = model.state_dict().copy()
             # update fast_weight for n steps
             for _ in range(args.opt_steps):
-                img_tensor, loss = model.train_step(0, count)
+                img_tensor, loss, _ = model.train_step(0, count)
             adapted_weights = model.state_dict()
             # take the slow_weights a step closer to the updated fast_weights 
             # pseudoversion: new_slow_weights = slow_weights + args.meta_lr * (adapted_weights - slow_weights)
@@ -139,7 +142,7 @@ try:
             model.load_state_dict(slow_weights)    
         else:
             for _ in range(args.opt_steps):
-                img_tensor, loss = model.train_step(0, count)
+                img_tensor, loss, _ = model.train_step(0, count)
 
         # save new img
         img_np = np.uint8(img_tensor.cpu().detach().squeeze(0).permute(1, 2, 0).numpy() * 255)

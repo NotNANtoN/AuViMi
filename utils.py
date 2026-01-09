@@ -32,6 +32,11 @@ def get_args():
         parser.add_argument("--host", type=str, default="abakus.ddnss.de")
         parser.add_argument("--user", type=str, default="anton")
         parser.add_argument("--mode", type=str, default="stream", choices=["stream", "pic"])
+        
+        parser.add_argument("--use_gabor", type=int, default=0, help="Use Gabor wavelet activation (WIRE) instead of Sine (SIREN).")
+        parser.add_argument("--gabor_scale", type=float, default=10.0, help="Scale (s0) for the Gabor Gaussian envelope.")
+        parser.add_argument("--clip_model", type=str, default="ViT-B/32", help="CLIP model to use (e.g., ViT-B/32, RN50).")
+        
         args = parser.parse_args()
         return args
 
