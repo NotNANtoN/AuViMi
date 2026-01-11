@@ -30,12 +30,30 @@ dependencies = [
 dev = [
     "black",
     "isort",
-    "mypy"
+    "mypy",
+    "flake8",
+    "pre-commit"
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/NotNANtoN/AuViMi"
 "Bug Tracker" = "https://github.com/NotNANtoN/AuViMi/issues"
+
+[tool.black]
+line-length = 120
+target-version = ['py39']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
 
 [tool.hatch.envs.default]
 dependencies = [
@@ -45,4 +63,3 @@ dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 force-include = { "server.py" = "auvimi/server.py", "client.py" = "auvimi/client.py", "utils.py" = "auvimi/utils.py" }
-

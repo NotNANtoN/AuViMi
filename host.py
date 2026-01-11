@@ -1,24 +1,23 @@
 import os
+import subprocess
 import sys
 import time
-import shutil
-import argparse
-import subprocess
 
 import numpy as np
 import torchvision
 from PIL import Image
 
-from utils import time_stamp, kill_old_process, clean_pid, get_args, clean_folder
+from utils import clean_folder, clean_pid, get_args, kill_old_process
 
 
 def clean_host_folders():
     clean_folder("host_in")
     clean_folder("host_out")
-    
+
+
 def timestr():
     return time.strftime("%x_%X", time.gmtime()).replace("/", "_")
-    
+
 
 kill_old_process(create_new=True)
 if os.path.exists("STOP.txt"):
@@ -40,13 +39,13 @@ if args.host == "abakus.ddnss.de":
     print(vars(args))
     if args.gen_backbone == "deepdaze":
         sys.path.append("../deepdaze/")
-        from deep_daze_repo.deep_daze.deep_daze import Imagine   
+        from deep_daze_repo.deep_daze.deep_daze import Imagine
     else:
         sys.path.append("../")
         from big_sleep_repo.big_sleep.big_sleep import Imagine
 else:
     if args.gen_backbone == "deepdaze":
-        from deep_daze import Imagine   
+        from deep_daze import Imagine
     else:
         from big_sleep import Imagine
 
@@ -55,35 +54,35 @@ clean_host_folders()
 
 try:
     to_pil = torchvision.transforms.ToPILImage()
-    
+
     if args.gen_backbone == "deepdaze":
         model = Imagine(
-                    epochs = args.epochs,
-                    image_width=args.size,
-                    gradient_accumulate_every=args.gradient_accumulate_every,
-                    batch_size=args.batch_size,
-                    num_layers=args.num_layers,
-                    lr=args.lr,   # 3e-3 is unstable
-                    lower_bound_cutout=args.lower_bound_cutout,                
-                    open_folder=False,
-                    #start_image_train_iters=200,
-                    save_progress=False,
-                    do_occlusion=args.do_occlusion,
-                    center_bias=args.center_bias,
-                    use_gabor=bool(args.use_gabor),
-                    gabor_scale=args.gabor_scale,
-                    model_name=args.clip_model,
-                   )
+            epochs=args.epochs,
+            image_width=args.size,
+            gradient_accumulate_every=args.gradient_accumulate_every,
+            batch_size=args.batch_size,
+            num_layers=args.num_layers,
+            lr=args.lr,  # 3e-3 is unstable
+            lower_bound_cutout=args.lower_bound_cutout,
+            open_folder=False,
+            # start_image_train_iters=200,
+            save_progress=False,
+            do_occlusion=args.do_occlusion,
+            center_bias=args.center_bias,
+            use_gabor=bool(args.use_gabor),
+            gabor_scale=args.gabor_scale,
+            model_name=args.clip_model,
+        )
     else:
         model = Imagine(
-                save_progress=False,
-                save_best=False,
-                open_folder=False,
-                num_cutouts=args.batch_size,
-                image_size=args.size,
-                epochs=args.epochs,
-                gradient_accumulate_every=1,
-               )
+            save_progress=False,
+            save_best=False,
+            open_folder=False,
+            num_cutouts=args.batch_size,
+            image_size=args.size,
+            epochs=args.epochs,
+            gradient_accumulate_every=1,
+        )
 
     text_weight = args.text_weight
     img_encoding = 0
@@ -99,14 +98,13 @@ try:
     previous_img = None
     newest_img = None
     count = 0
-    
-    
+
     while not os.path.exists("STOP.txt"):
         host_loop_time = time.time()
-        
+
         img_names = [name[:-4] for name in os.listdir(host_in) if name.endswith(".jpg")]
         newest_img = max(img_names, key=lambda x: int(x)) if len(img_names) > 0 else None
-        
+
         # maybe update target img
         if text_weight < 1.0 and newest_img != previous_img:
             # determine img encoding
@@ -124,7 +122,7 @@ try:
             previous_img = newest_img
         if clip_encoding is None:
             continue
-        
+
         # train
         if args.meta:
             # reptile(openai)/FOMAML(Finn) approach
@@ -133,13 +131,13 @@ try:
             for _ in range(args.opt_steps):
                 img_tensor, loss, _ = model.train_step(0, count)
             adapted_weights = model.state_dict()
-            # take the slow_weights a step closer to the updated fast_weights 
+            # take the slow_weights a step closer to the updated fast_weights
             # pseudoversion: new_slow_weights = slow_weights + args.meta_lr * (adapted_weights - slow_weights)
             for key in slow_weights:
                 new_slow_weights = slow_weights[key] + args.meta_lr * (adapted_weights[key] - slow_weights[key])
                 slow_weights[key] = new_slow_weights.type(slow_weights[key].dtype)
             # put the updated slow weights back in the model
-            model.load_state_dict(slow_weights)    
+            model.load_state_dict(slow_weights)
         else:
             for _ in range(args.opt_steps):
                 img_tensor, loss, _ = model.train_step(0, count)
@@ -152,7 +150,7 @@ try:
         img_pil.save(os.path.join(host_out, str(count) + ".jpg"), quality=95, subsampling=0)
         if args.run_local:
             img_pil.save(os.path.join(client_in, "new.jpg"), quality=95, subsampling=0)
-        
+
 
 finally:
     if os.path.exists("STOP.txt"):
@@ -163,17 +161,19 @@ finally:
     time_now = timestr()
     path = os.path.join(os.getcwd(), folder, time_now)
     # save output movie
-    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out","%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"])
+    subprocess.run(
+        ["ffmpeg", "-i", os.path.join(os.getcwd(), "host_out", "%d.jpg"), "-pix_fmt", "yuv420p", path + "_mirror.mp4"]
+    )
     # rename host_in images for ffmpeg:
     files = os.listdir("host_in")
     files = sorted(files, key=lambda f: int(f[:-4]))
     for f, i in zip(files, range(len(files))):
         subprocess.run(["mv", os.path.join("host_in", f), os.path.join("host_in", str(i) + ".jpg")])
     # save input movie
-    subprocess.run(["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in","%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"])
+    subprocess.run(
+        ["ffmpeg", "-i", os.path.join(os.getcwd(), "host_in", "%d.jpg"), "-pix_fmt", "yuv420p", path + "_input.mp4"]
+    )
     # clean folders
-    #clean_host_folders()
+    # clean_host_folders()
     # kill process
     clean_pid()
-
-

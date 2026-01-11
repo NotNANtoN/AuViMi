@@ -1,16 +1,16 @@
-import os
-import sys
 import io
+import os
+import subprocess
 import time
-import uvicorn
+
 import numpy as np
 import torch
-import subprocess
+import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from PIL import Image, ImageEnhance
-from utils import get_args
 
 from auvimi.engine.deep_daze import Imagine
+from utils import get_args
 
 # --- Import Logic ---
 args = get_args()
@@ -34,7 +34,7 @@ elif torch.cuda.is_available():
 print(f"Using device: {device}")
 
 # --- Model Initialization ---
-print(f"Initializing local deepdaze engine...")
+print("Initializing local deepdaze engine...")
 
 # We initialize the model globally
 model_kwargs = {
@@ -63,7 +63,7 @@ if device == "mps":
 # Use modern torch.compile only for CUDA (Stable)
 if device == "cuda":
     try:
-        if hasattr(model, 'model'):
+        if hasattr(model, "model"):
             print("Compiling SIREN model with torch.compile (inductor)...")
             model.model = torch.compile(model.model)
     except Exception as e:
@@ -81,60 +81,54 @@ if args.text:
 
 app = FastAPI()
 
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("Client connected!")
-    
+
     # 0. Send Handshake (Configuration)
-    config = {
-        "size": args.size,
-        "gen_backbone": args.gen_backbone,
-        "text": args.text,
-        "text_weight": args.text_weight
-    }
+    config = {"size": args.size, "gen_backbone": args.gen_backbone, "text": args.text, "text_weight": args.text_weight}
     await websocket.send_json(config)
-    
+
     img_encoding = 0
     iteration_count = 0
-    
+
     try:
         while True:
             # 1. Receive Image
             start_time = time.time()
             data = await websocket.receive_bytes()
-            
+
             # Save Input Frame
             with open(os.path.join(input_dir, f"{iteration_count:05d}.jpg"), "wb") as f:
                 f.write(data)
-            
+
             # Load image directly from bytes (no disk IO)
             img_input = Image.open(io.BytesIO(data)).convert("RGB")
-            
-            io_read_time = time.time() - start_time
-                
+
             # 2. Update Encoding
             encode_start = time.time()
             if text_weight < 1.0:
                 # Pass PIL image directly
                 new_img_encoding = model.create_img_encoding(img_input)
-                
+
                 # Use bfloat16 for MPS
                 target_dtype = torch.bfloat16 if device == "mps" else torch.float32
                 new_img_encoding = new_img_encoding.to(device=model.device, dtype=target_dtype)
-                
+
                 if isinstance(img_encoding, int):
                     img_encoding = new_img_encoding
-                
+
                 img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
-                
+
                 if text_encoding is None:
                     clip_encoding = img_encoding
                 else:
                     clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
 
                 model.set_clip_encoding(img=img_input, encoding=clip_encoding)
-            
+
             encode_time = time.time() - encode_start
 
             # 3. Train Step(s)
@@ -147,65 +141,90 @@ async def websocket_endpoint(websocket: WebSocket):
                 current_loss = loss.item()
                 iteration_count += 1
             train_time = time.time() - train_start
-            
+
             # 4. Return Result
-            write_start = time.time()
             if img_tensor is not None:
                 # Ensure we don't have NaNs before casting
                 img_tensor = torch.nan_to_num(img_tensor, nan=0.5)
                 img_np = np.uint8(img_tensor.cpu().detach().squeeze(0).permute(1, 2, 0).numpy() * 255)
                 img_pil = Image.fromarray(img_np)
-                
+
                 # OPTIONAL: Definition Boost (Contrast & Sharpness)
                 boost_contrast = False
                 if boost_contrast:
                     enhancer = ImageEnhance.Contrast(img_pil)
-                    img_pil = enhancer.enhance(1.2) # Boost contrast by 20%
+                    img_pil = enhancer.enhance(1.2)  # Boost contrast by 20%
                     enhancer = ImageEnhance.Sharpness(img_pil)
-                    img_pil = enhancer.enhance(1.5) # Sharpen significantly
-                    
+                    img_pil = enhancer.enhance(1.5)  # Sharpen significantly
+
                 # Save Output Frame
                 img_pil.save(os.path.join(output_dir, f"{iteration_count:05d}.jpg"), quality=90)
-                
+
                 with io.BytesIO() as buf:
-                    img_pil.save(buf, format='JPEG', quality=80)
+                    img_pil.save(buf, format="JPEG", quality=80)
                     byte_data = buf.getvalue()
-                
+
                 # Send metadata (loss) followed by image data
                 await websocket.send_json({"loss": current_loss})
                 await websocket.send_bytes(byte_data)
-            
-            io_write_time = time.time() - write_start
-            
+
             total_time = time.time() - start_time
-            
+
             # Detailed Train Breakdown
-            t_siren = last_avg_timings.get('siren', 0)
-            t_clip = last_avg_timings.get('clip', 0)
-            t_cut = last_avg_timings.get('cutouts', 0)
-            t_back = last_avg_timings.get('backward', 0)
-            
-            print(f"Loop: {total_time:.3f}s | Encode: {encode_time:.3f}s | Train: {train_time:.3f}s (SIREN: {t_siren:.3f}s, CLIP: {t_clip:.3f}s, Cut: {t_cut:.3f}s, Back: {t_back:.3f}s) | Loss: {current_loss:.4f}")
-                
+            t_siren = last_avg_timings.get("siren", 0)
+            t_clip = last_avg_timings.get("clip", 0)
+            t_cut = last_avg_timings.get("cutouts", 0)
+            t_back = last_avg_timings.get("backward", 0)
+
+            print(
+                f"Loop: {total_time:.3f}s | Encode: {encode_time:.3f}s | Train: {train_time:.3f}s (SIREN: {t_siren:.3f}s, CLIP: {t_clip:.3f}s, Cut: {t_cut:.3f}s, Back: {t_back:.3f}s) | Loss: {current_loss:.4f}"
+            )
+
     except WebSocketDisconnect:
         print(f"Client disconnected. Encoding videos for session {current_session_id}...")
-        
+
         # Build MP4s using ffmpeg
         try:
             # Output Video
             out_mp4 = os.path.join(session_dir, "transformed.mp4")
-            subprocess.run([
-                "ffmpeg", "-y", "-framerate", "10", "-i", os.path.join(output_dir, "%05d.jpg"),
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", out_mp4
-            ], check=True, capture_output=True)
-            
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-framerate",
+                    "10",
+                    "-i",
+                    os.path.join(output_dir, "%05d.jpg"),
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    out_mp4,
+                ],
+                check=True,
+                capture_output=True,
+            )
+
             # Input Video
             in_mp4 = os.path.join(session_dir, "original.mp4")
-            subprocess.run([
-                "ffmpeg", "-y", "-framerate", "10", "-i", os.path.join(input_dir, "%05d.jpg"),
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", in_mp4
-            ], check=True, capture_output=True)
-            
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-framerate",
+                    "10",
+                    "-i",
+                    os.path.join(input_dir, "%05d.jpg"),
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    in_mp4,
+                ],
+                check=True,
+                capture_output=True,
+            )
+
             print(f"✅ Videos saved to {session_dir}")
         except Exception as e:
             print(f"❌ Failed to encode videos: {e}")
@@ -213,8 +232,10 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"Error: {e}")
         import traceback
+
         traceback.print_exc()
         await websocket.close()
+
 
 if __name__ == "__main__":
     print("Starting server on 0.0.0.0:8000")

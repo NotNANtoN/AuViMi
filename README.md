@@ -11,15 +11,17 @@
 
 
 
-AuViMi stands for audio-visual mirror. The idea is to have CLIP generate its interpretation of what your webcam sees, combined with the words thare are spoken.
+AuViMi stands for audio-visual mirror. The idea is to have CLIP generate its interpretation of what your webcam sees, combined with the words that are spoken.
 
-This implementation assumes that you want to operate on a non-GPU laptop, but have quick connection to a more powerful GPU server.
+**Modernized in 2026:** The project now uses a high-performance **WebSocket stream** between a client (your webcam) and a server (the GPU engine). This removes the old disk-syncing bottleneck and allows for real-time dreaming.
 
-See it in action (with [deep-daze](https://github.com/lucidrains/deep-daze) as a backbone). You can observe some art, reinterpreted by deep-daze.: 
+This implementation assumes that you want to operate on a non-GPU laptop (Client), but have a quick connection to a more powerful GPU server (Server). It also runs natively on **Apple Silicon (MPS)**.
+
+See it in action (with [deep-daze](https://github.com/lucidrains/deep-daze) as a backbone). You can observe some art, reinterpreted by deep-daze.:
 
 https://user-images.githubusercontent.com/19983153/110971317-025f6180-835b-11eb-92e2-a5b8faa666a3.mp4
 
-And here's a beautiful self-portrait of NotNANtoN with [big-sleep](https://github.com/lucidrains/big-sleep) as a backbone: 
+And here's a beautiful self-portrait of NotNANtoN with [big-sleep](https://github.com/lucidrains/big-sleep) as a backbone:
 
 https://user-images.githubusercontent.com/19983153/110971466-38044a80-835b-11eb-884f-5d52dbd5d06d.mp4
 
@@ -29,13 +31,23 @@ At the moment, we only support reading in the webcam pictures and we support the
 
 **Install**
 
-Install the `requirements.txt` using `python3 -m pip install -r requirements.txt`. Also, install `ffmpeg` on the host server if you want a .mp4 video of the interpretation using `sudo apt-get install ffmpeg`.
+Install using the modern python packaging: `python3 -m pip install .`.
 
-**Note**
+Also, install `ffmpeg` on the machine running the server if you want automatic session recording into .mp4 videos.
 
-If you use a remote GPU host to do the heavy computation, we assume that ssh is set up. Furthermore, we assume that an ssh-key is used instead of a password to connect to the remote server.
+**Commands (Modern Stream Version)**
 
-**Commands:**
+First, start the **Server** on your GPU machine (or locally on a Mac):
+```bash
+python3 server.py --size 256 --text "A futuristic neon city" --text_weight 0.2
+```
+
+Then, start the **Client** on the machine with the webcam:
+```bash
+python3 client.py --host localhost
+```
+
+**Legacy Commands (Disk Sync Version)**
 
 To run on your GPU laptop or desktop with a webcam, the following command should work. `python_path`defaults to `/usr/bin/python3`, so you only need to use it if you are using a `venv` or if the python path on the remote host is different from the default:
 

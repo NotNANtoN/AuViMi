@@ -43,4 +43,3 @@ Kernel fusion is the "final boss" of optimization.
 2.  [ ] **Augmentation Upgrade:** Replace simple cutouts with a `DiffAug` pipeline.
 3.  [ ] **Backend Switch:** Explore `SigLIP` via OpenCLIP.
 4.  [ ] **Fusion:** Attempt to compile the new shallow hybrid model.
-
