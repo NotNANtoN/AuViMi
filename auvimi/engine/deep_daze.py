@@ -395,7 +395,8 @@ class DeepDaze(nn.Module):
         else:
             lower *= width
             upper *= width
-            sizes = torch.randint(int(lower), int(upper), (self.batch_size,))
+            # Ensure tensor creation is device-aware to avoid graph breaks
+            sizes = torch.randint(int(lower), int(upper), (self.batch_size,), device=self.model.grid.device)
         return sizes
 
     def forward(self, text_embed, target_image=None, return_loss=True, dry_run=False):

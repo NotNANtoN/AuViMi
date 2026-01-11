@@ -98,12 +98,13 @@ if args.text:
 if device == "cuda":
     try:
         if hasattr(model, "model"):
-            print("Compiling SIREN model with torch.compile (inductor)...")
-            model.model = torch.compile(model.model)
+            print("Compiling SIREN generator with torch.compile (reduce-overhead)...")
+            # Only compile the inner generator, not the entire DeepDaze loop/augmentation logic
+            model.model.model = torch.compile(model.model.model, mode="reduce-overhead")
 
             # Explicitly compile the CLIP model for faster encoding steps
-            print("Compiling CLIP perceptor...")
-            model.perceptor = torch.compile(model.perceptor)
+            print("Compiling CLIP perceptor (reduce-overhead)...")
+            model.perceptor = torch.compile(model.perceptor, mode="reduce-overhead")
 
             # Warmup to trigger compilation now instead of during first request
             # This helps avoid a long lag on the first WebSocket message
