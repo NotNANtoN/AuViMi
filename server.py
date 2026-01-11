@@ -15,6 +15,7 @@ try:
     import torch._dynamo
 
     torch._dynamo.config.recompile_limit = 64
+    torch._dynamo.config.allow_unspec_int_on_nn_module = True
 except (ImportError, AttributeError):
     pass
 
@@ -98,9 +99,9 @@ if args.text:
 if device == "cuda":
     try:
         if hasattr(model, "model"):
-            print("Compiling SIREN generator with torch.compile (reduce-overhead)...")
-            # Only compile the inner generator, not the entire DeepDaze loop/augmentation logic
-            model.model.model = torch.compile(model.model.model, mode="reduce-overhead")
+            print("Compiling DeepDaze engine with torch.compile (reduce-overhead)...")
+            # Now that the loop is vectorized, we can compile the entire DeepDaze forward pass
+            model.model = torch.compile(model.model, mode="reduce-overhead")
 
             # Explicitly compile the CLIP model for faster encoding steps
             print("Compiling CLIP perceptor (reduce-overhead)...")

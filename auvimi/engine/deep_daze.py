@@ -337,7 +337,7 @@ class DeepDaze(nn.Module):
 
         self.batch_size = batch_size
         self.total_batches = total_batches
-        self.num_batches_processed = 0
+        self.register_buffer("num_batches_processed", torch.tensor(0, dtype=torch.long))
 
         self.do_aug = do_aug
 
@@ -384,20 +384,66 @@ class DeepDaze(nn.Module):
 
         self.model.net.apply(_reset)
 
-    def sample_sizes(self, lower, upper, width, gauss_mean):
+    def generate_random_params(self, batch_size, device, lower_bound=0.1):
+        """Generates random sampling parameters entirely on the GPU."""
+        # Sample scales
         if self.gauss_sampling:
-            gauss_samples = torch.zeros(self.batch_size).normal_(mean=gauss_mean, std=self.gauss_std)
-            outside_bounds_mask = (gauss_samples > upper) | (gauss_samples < upper)
-            gauss_samples[outside_bounds_mask] = torch.zeros((len(gauss_samples[outside_bounds_mask]),)).uniform_(
-                lower, upper
-            )
-            sizes = (gauss_samples * width).int()
+            scales = torch.zeros(batch_size, device=device).normal_(mean=self.gauss_mean, std=self.gauss_std)
+            scales = scales.clamp(lower_bound, self.upper_bound_cutout)
         else:
-            lower *= width
-            upper *= width
-            # Ensure tensor creation is device-aware to avoid graph breaks
-            sizes = torch.randint(int(lower), int(upper), (self.batch_size,), device=self.model.grid.device)
-        return sizes
+            scales = torch.empty(batch_size, device=device).uniform_(lower_bound, self.upper_bound_cutout)
+
+        # Sample translations (must stay within bounds so we don't sample outside the image)
+        # Max translation is (1 - scale) in normalized [-1, 1] coordinates
+        max_trans = (1.0 - scales).clamp(min=0.0)
+
+        if self.center_bias:
+            # Sample from a normal distribution centered at 0
+            # Standard deviation is scaled by center_focus
+            std = 1.0 / self.center_focus
+            tx = torch.zeros(batch_size, device=device).normal_(mean=0, std=std)
+            ty = torch.zeros(batch_size, device=device).normal_(mean=0, std=std)
+            # Clamp and scale to max_trans
+            tx = tx.clamp(-1, 1) * max_trans
+            ty = ty.clamp(-1, 1) * max_trans
+        else:
+            tx = torch.empty(batch_size, device=device).uniform_(-1, 1) * max_trans
+            ty = torch.empty(batch_size, device=device).uniform_(-1, 1) * max_trans
+
+        # Sample rotations (if augmentation is enabled)
+        if self.do_aug:
+            angles = torch.empty(batch_size, device=device).uniform_(-math.pi / 18, math.pi / 18)  # ~ +-10 degrees
+        else:
+            angles = torch.zeros(batch_size, device=device)
+
+        return scales, tx, ty, angles
+
+    def build_affine_matrices(self, scales, tx, ty, angles):
+        """Builds a batch of affine matrices on the GPU."""
+        batch_size = scales.shape[0]
+
+        # F.affine_grid expects 2x3 matrices:
+        # [ s*cos(a)  -s*sin(a)  tx ]
+        # [ s*sin(a)   s*cos(a)  ty ]
+        # Note: We use 'scales' as a multiplier for the grid coordinates.
+        # To zoom IN (make cutout), the grid coordinates should be scaled DOWN.
+        # So we use the scale directly in the matrix.
+
+        cos_a = torch.cos(angles)
+        sin_a = torch.sin(angles)
+
+        # Construct rows
+        # Row 1: [scale * cos_a, -scale * sin_a, tx]
+        # Row 2: [scale * sin_a,  scale * cos_a, ty]
+        m00 = scales * cos_a
+        m01 = -scales * sin_a
+        m02 = tx
+        m10 = scales * sin_a
+        m11 = scales * cos_a
+        m12 = ty
+
+        matrices = torch.stack([m00, m01, m02, m10, m11, m12], dim=1).reshape(batch_size, 2, 3)
+        return matrices
 
     def forward(self, text_embed, target_image=None, return_loss=True, dry_run=False):
         # Profiling dictionary
@@ -433,47 +479,40 @@ class DeepDaze(nn.Module):
         # determine upper and lower sampling bound
         if not is_compiling:
             start_cutouts = time.time()
-        width = out.shape[-1]
+
         lower_bound = self.lower_bound_cutout
         if self.saturate_bound:
-            progress_fraction = self.num_batches_processed / self.total_batches
-            lower_bound += (self.saturate_limit - self.lower_bound_cutout) * progress_fraction
+            # self.num_batches_processed is now a tensor, so we need to use it as such
+            # We use .float() to ensure floating point division
+            progress_fraction = self.num_batches_processed.float() / self.total_batches
+            lower_bound = lower_bound + (self.saturate_limit - self.lower_bound_cutout) * progress_fraction
 
-        # sample cutout sizes between lower and upper bound
-        sizes = self.sample_sizes(lower_bound, self.upper_bound_cutout, width, self.gauss_mean)
+        device = out.device
+        batch_size = self.batch_size
 
-        # create normalized random cutouts
-        if self.do_cutout:
-            image_pieces = []
-            target_pieces = []
-            for size in sizes:
-                piece, offsets = rand_cutout(out, size, center_bias=self.center_bias, center_focus=self.center_focus)
-                if self.do_aug:
-                    piece = augment_piece(piece, self.input_resolution)
-                else:
-                    piece = interpolate(piece, self.input_resolution)
-                image_pieces.append(piece)
+        # 1. Generate random parameters on GPU
+        scales, tx, ty, angles = self.generate_random_params(batch_size, device, lower_bound=lower_bound)
 
-                if self.aug_both and target_image is not None:
-                    # Apply same cutout to target image
-                    t_piece, _ = rand_cutout(target_image, size, offset_x=offsets[0], offset_y=offsets[1])
-                    if self.do_aug:
-                        t_piece = augment_piece(t_piece, self.input_resolution)
-                    else:
-                        t_piece = interpolate(t_piece, self.input_resolution)
-                    target_pieces.append(t_piece)
+        # 2. Build affine matrices
+        matrices = self.build_affine_matrices(scales, tx, ty, angles)
 
-            image_pieces = torch.cat([self.normalize_image(piece) for piece in image_pieces])
-            if self.aug_both and target_image is not None:
-                target_pieces = torch.cat([self.normalize_image(piece) for piece in target_pieces])
-        else:
-            image_pieces = torch.cat(
-                [self.normalize_image(interpolate(out.clone(), self.input_resolution)) for _ in sizes]
-            )
-            if self.aug_both and target_image is not None:
-                target_pieces = torch.cat(
-                    [self.normalize_image(interpolate(target_image.clone(), self.input_resolution)) for _ in sizes]
-                )
+        # 3. Create sampling grid
+        # We want to output [batch, 3, input_resolution, input_resolution] for CLIP
+        grid = F.affine_grid(
+            matrices, [batch_size, 3, self.input_resolution, self.input_resolution], align_corners=False
+        )
+
+        # 4. Sample image pieces using grid_sample (Vectorized!)
+        # We expand the single 'out' image to batch_size
+        image_pieces = F.grid_sample(out.expand(batch_size, -1, -1, -1), grid, align_corners=False)
+
+        # Apply normalization
+        image_pieces = self.normalize_image(image_pieces)
+
+        if self.aug_both and target_image is not None:
+            # Apply same sampling to target image
+            target_pieces = F.grid_sample(target_image.expand(batch_size, -1, -1, -1), grid, align_corners=False)
+            target_pieces = self.normalize_image(target_pieces)
 
         if not is_compiling:
             sync()
@@ -482,11 +521,8 @@ class DeepDaze(nn.Module):
         # calc image embedding
         if not is_compiling:
             start_clip = time.time()
-        device_type = (
-            "cuda"
-            if "cuda" in str(self.perceptor.visual.conv1.weight.device)
-            else "mps" if "mps" in str(self.perceptor.visual.conv1.weight.device) else "cpu"
-        )
+        device_type = "cuda" if "cuda" in str(device) else "mps" if "mps" in str(device) else "cpu"
+
         # Use bfloat16 for MPS and CUDA (if supported) for better stability/speed
         autocast_kwargs = {"device_type": device_type, "enabled": True}
         if device_type == "mps":
@@ -500,6 +536,7 @@ class DeepDaze(nn.Module):
                 target_embed = self.perceptor.encode_image(target_pieces)
             else:
                 target_embed = text_embed
+
         if not is_compiling:
             sync()
             self.last_timings["clip"] = time.time() - start_clip
@@ -523,6 +560,12 @@ class DeepDaze(nn.Module):
         # add TV loss
         if self.tv_coef > 0:
             loss = loss + self.tv_coef * total_variation_loss(out)
+
+        # Add Saturation/Color loss to solve "grayness"
+        # We encourage higher standard deviation across the RGB channels
+        rgb_std = out.std(dim=1).mean()
+        # We want to maximize diversity, so we subtract it from the loss
+        loss = loss - 10.0 * rgb_std
 
         # count batches
         if not dry_run:
