@@ -358,11 +358,13 @@ class ModifiedResNet(nn.Module):
 
 
 class LayerNorm(nn.LayerNorm):
-    """Subclass torch's LayerNorm to handle fp16."""
+    """Subclass torch's LayerNorm to handle fp16/bf16."""
 
     def forward(self, x: torch.Tensor):
         orig_type = x.dtype
-        ret = super().forward(x.type(torch.float32))
+        # If weights are float32, we do computation in float32 for stability (original CLIP behavior).
+        # If weights have been cast to bf16/fp16, we must match the weight type.
+        ret = super().forward(x.type(self.weight.dtype))
         return ret.type(orig_type)
 
 

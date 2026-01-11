@@ -194,6 +194,35 @@ def rand_cutout(image, size, center_bias=False, center_focus=2, offset_x=None, o
     return cutout, (offset_x, offset_y)
 
 
+def augment_piece(piece, input_resolution):
+    """Applies random augmentations to a cutout piece."""
+    # We use .item() to convert to python scalars because torchvision.transforms.functional.affine
+    # requires them. We also accept that this might cause a graph break in torch.compile,
+    # which is preferable to a crash or a recompile of the entire graph.
+    orig_dtype = piece.dtype
+    piece = piece.float()
+
+    device = piece.device
+    angle = (torch.rand([], device=device) * 20 - 10).item()
+    trans_x = (torch.rand([], device=device) * 0.2 - 0.1).item() * input_resolution
+    trans_y = (torch.rand([], device=device) * 0.2 - 0.1).item() * input_resolution
+
+    # Resize to CLIP input resolution
+    piece = interpolate(piece, input_resolution)
+
+    # Apply affine transform
+    piece = T.functional.affine(
+        piece,
+        angle=angle,
+        translate=[trans_x, trans_y],
+        scale=1.0,
+        shear=[0.0, 0.0],
+        interpolation=T.InterpolationMode.BILINEAR,
+    )
+
+    return piece.to(orig_dtype)
+
+
 def create_clip_img_transform(image_width):
     clip_mean = [0.48145466, 0.4578275, 0.40821073]
     clip_std = [0.26862954, 0.26130258, 0.27577711]
@@ -236,6 +265,14 @@ def open_folder(path):
 
 def norm_siren_output(img):
     return ((img + 1) * 0.5).clamp(0.0, 1.0)
+
+
+def total_variation_loss(img):
+    """Total Variation loss for smoothing images."""
+    bs, c, h, w = img.size()
+    tv_h = torch.pow(img[:, :, 1:, :] - img[:, :, :-1, :], 2).sum()
+    tv_w = torch.pow(img[:, :, :, 1:] - img[:, :, :, :-1], 2).sum()
+    return (tv_h + tv_w) / (bs * c * h * w)
 
 
 def create_text_path(context_length, text=None, img=None, encoding=None, separator=None):
@@ -285,6 +322,8 @@ class DeepDaze(nn.Module):
         use_gabor=False,
         gabor_scale=10.0,
         aug_both=False,
+        tv_coef=100.0,
+        do_aug=False,
     ):
         super().__init__()
         # load clip
@@ -293,11 +332,14 @@ class DeepDaze(nn.Module):
         self.normalize_image = clip_norm
 
         self.loss_coef = loss_coef
+        self.tv_coef = tv_coef
         self.image_width = image_width
 
         self.batch_size = batch_size
         self.total_batches = total_batches
         self.num_batches_processed = 0
+
+        self.do_aug = do_aug
 
         w0 = default(theta_hidden, 30.0)
         w0_initial = default(theta_initial, 30.0)
@@ -360,22 +402,36 @@ class DeepDaze(nn.Module):
         # Profiling dictionary
         self.last_timings = {}
 
+        # Check if we should profile (skip if compiling to avoid recompiles)
+        is_compiling = False
+        try:
+            import torch.compiler
+
+            is_compiling = torch.compiler.is_compiling()
+        except (ImportError, AttributeError):
+            pass
+
         def sync():
+            if is_compiling:
+                return
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
             elif torch.backends.mps.is_available():
                 torch.mps.synchronize()
 
-        start_siren = time.time()
+        if not is_compiling:
+            start_siren = time.time()
         out = self.model()
-        sync()
-        self.last_timings["siren"] = time.time() - start_siren
+        if not is_compiling:
+            sync()
+            self.last_timings["siren"] = time.time() - start_siren
 
         if not return_loss:
             return out
 
         # determine upper and lower sampling bound
-        start_cutouts = time.time()
+        if not is_compiling:
+            start_cutouts = time.time()
         width = out.shape[-1]
         lower_bound = self.lower_bound_cutout
         if self.saturate_bound:
@@ -391,12 +447,20 @@ class DeepDaze(nn.Module):
             target_pieces = []
             for size in sizes:
                 piece, offsets = rand_cutout(out, size, center_bias=self.center_bias, center_focus=self.center_focus)
-                image_pieces.append(interpolate(piece, self.input_resolution))
+                if self.do_aug:
+                    piece = augment_piece(piece, self.input_resolution)
+                else:
+                    piece = interpolate(piece, self.input_resolution)
+                image_pieces.append(piece)
 
                 if self.aug_both and target_image is not None:
                     # Apply same cutout to target image
                     t_piece, _ = rand_cutout(target_image, size, offset_x=offsets[0], offset_y=offsets[1])
-                    target_pieces.append(interpolate(t_piece, self.input_resolution))
+                    if self.do_aug:
+                        t_piece = augment_piece(t_piece, self.input_resolution)
+                    else:
+                        t_piece = interpolate(t_piece, self.input_resolution)
+                    target_pieces.append(t_piece)
 
             image_pieces = torch.cat([self.normalize_image(piece) for piece in image_pieces])
             if self.aug_both and target_image is not None:
@@ -410,24 +474,34 @@ class DeepDaze(nn.Module):
                     [self.normalize_image(interpolate(target_image.clone(), self.input_resolution)) for _ in sizes]
                 )
 
-        sync()
-        self.last_timings["cutouts"] = time.time() - start_cutouts
+        if not is_compiling:
+            sync()
+            self.last_timings["cutouts"] = time.time() - start_cutouts
 
         # calc image embedding
-        start_clip = time.time()
+        if not is_compiling:
+            start_clip = time.time()
         device_type = (
             "cuda"
             if "cuda" in str(self.perceptor.visual.conv1.weight.device)
             else "mps" if "mps" in str(self.perceptor.visual.conv1.weight.device) else "cpu"
         )
-        with amp.autocast(device_type=device_type, enabled=True):
+        # Use bfloat16 for MPS and CUDA (if supported) for better stability/speed
+        autocast_kwargs = {"device_type": device_type, "enabled": True}
+        if device_type == "mps":
+            autocast_kwargs["dtype"] = torch.bfloat16
+        elif device_type == "cuda" and torch.cuda.is_bf16_supported():
+            autocast_kwargs["dtype"] = torch.bfloat16
+
+        with amp.autocast(**autocast_kwargs):
             image_embed = self.perceptor.encode_image(image_pieces)
             if self.aug_both and target_image is not None:
                 target_embed = self.perceptor.encode_image(target_pieces)
             else:
                 target_embed = text_embed
-        sync()
-        self.last_timings["clip"] = time.time() - start_clip
+        if not is_compiling:
+            sync()
+            self.last_timings["clip"] = time.time() - start_clip
 
         # calc loss
         # loss over averaged features of cutouts
@@ -444,6 +518,10 @@ class DeepDaze(nn.Module):
 
         # merge losses
         loss = averaged_loss * (self.averaging_weight) + general_loss * (1 - self.averaging_weight)
+
+        # add TV loss
+        if self.tv_coef > 0:
+            loss = loss + self.tv_coef * total_variation_loss(out)
 
         # count batches
         if not dry_run:
@@ -499,6 +577,8 @@ class Imagine(nn.Module):
         use_gabor=False,
         gabor_scale=10.0,
         aug_both=False,
+        tv_coef=100.0,
+        do_aug=False,
     ):
 
         super().__init__()
@@ -556,6 +636,8 @@ class Imagine(nn.Module):
             self.device = torch.device("mps")
         elif torch.cuda.is_available():
             self.device = torch.device("cuda")
+            # Enable TensorFloat32 for better performance on NVIDIA GPUs (Ampere+)
+            torch.set_float32_matmul_precision("high")
         else:
             self.device = torch.device("cpu")
 
@@ -604,11 +686,13 @@ class Imagine(nn.Module):
             use_gabor=use_gabor,
             gabor_scale=gabor_scale,
             aug_both=aug_both,
+            tv_coef=tv_coef,
+            do_aug=do_aug,
         ).to(self.device)
         self.model = model
 
-        # Use GradScaler only for CUDA. MPS handles mixed precision differently.
-        self.use_scaler = "cuda" in str(self.device)
+        # Use GradScaler only for CUDA float16. BFloat16 and MPS do not need it.
+        self.use_scaler = "cuda" in str(self.device) and not torch.cuda.is_bf16_supported()
         self.scaler = amp.GradScaler(enabled=self.use_scaler)
         siren_params = model.model.parameters()
         if optimizer == "AdamP":
@@ -618,6 +702,7 @@ class Imagine(nn.Module):
         elif optimizer == "DiffGrad":
             self.optimizer = DiffGrad(siren_params, lr)
         self.gradient_accumulate_every = gradient_accumulate_every
+
         self.save_every = save_every
         self.save_date_time = save_date_time
         self.open_folder = open_folder
@@ -755,8 +840,14 @@ class Imagine(nn.Module):
                 torch.mps.synchronize()
 
         device_type = "cuda" if "cuda" in str(self.device) else "mps" if "mps" in str(self.device) else "cpu"
+        autocast_kwargs = {"device_type": device_type, "enabled": True}
+        if device_type == "mps":
+            autocast_kwargs["dtype"] = torch.bfloat16
+        elif device_type == "cuda" and torch.cuda.is_bf16_supported():
+            autocast_kwargs["dtype"] = torch.bfloat16
+
         for _ in range(self.gradient_accumulate_every):
-            with amp.autocast(device_type=device_type, enabled=True):
+            with amp.autocast(**autocast_kwargs):
                 out, loss = self.model(self.clip_encoding, target_image=self.target_image_tensor)
 
             t_fwd = self.model.last_timings.copy()
@@ -873,8 +964,10 @@ class Imagine(nn.Module):
 
         tqdm.write(f'Imagining "{self.textpath}" from the depths of my weights...')
 
-        with torch.no_grad():
-            self.model(self.clip_encoding, dry_run=True)  # do one warmup step due to potential issue with CLIP and CUDA
+        # do one warmup step due to potential issue with CLIP and CUDA
+        # We don't use no_grad here to match the requires_grad state of training
+        self.model(self.clip_encoding, dry_run=True)
+        self.model.zero_grad()
 
         if self.open_folder:
             open_folder("./")

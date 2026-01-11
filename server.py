@@ -1,19 +1,35 @@
 import io
 import os
-import subprocess
-import time
 
-import numpy as np
-import torch
-import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from PIL import Image, ImageEnhance
+# Set CUDA allocation configuration before any torch calls to prevent fragmentation
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-from auvimi.engine.deep_daze import Imagine
-from utils import get_args
+import subprocess  # noqa: E402
+import time  # noqa: E402
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
+
+# Increase recompile limit for torch.compile to handle dynamic behaviors
+try:
+    import torch._dynamo
+
+    torch._dynamo.config.recompile_limit = 64
+except (ImportError, AttributeError):
+    pass
+
+import uvicorn  # noqa: E402
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: E402
+from PIL import Image, ImageEnhance  # noqa: E402
+
+from auvimi.engine.deep_daze import Imagine  # noqa: E402
+from utils import clean_pid, get_args, kill_old_process  # noqa: E402
 
 # --- Import Logic ---
 args = get_args()
+
+# --- Kill Old Processes ---
+kill_old_process(create_new=True)
 
 # --- Session Recording Setup ---
 SESSION_ROOT = "sessions"
@@ -31,6 +47,8 @@ if torch.backends.mps.is_available():
     device = "mps"
 elif torch.cuda.is_available():
     device = "cuda"
+    # Enable TensorFloat32 for better performance on NVIDIA GPUs (Ampere+)
+    torch.set_float32_matmul_precision("high")
 print(f"Using device: {device}")
 
 # --- Model Initialization ---
@@ -50,6 +68,7 @@ model_kwargs = {
     "aug_both": bool(args.aug_both),
     "open_folder": False,
     "save_progress": False,
+    "do_aug": False,
 }
 model = Imagine(**model_kwargs)
 
@@ -59,15 +78,10 @@ if device == "mps":
     # Force everything to bfloat16 for speed on Mac
     model.to(dtype=torch.bfloat16)
     print("Model moved to MPS in bfloat16.")
-
-# Use modern torch.compile only for CUDA (Stable)
-if device == "cuda":
-    try:
-        if hasattr(model, "model"):
-            print("Compiling SIREN model with torch.compile (inductor)...")
-            model.model = torch.compile(model.model)
-    except Exception as e:
-        print(f"Note: Could not use torch.compile: {e}")
+elif device == "cuda" and torch.cuda.is_bf16_supported():
+    # Use bfloat16 on Ampere+ GPUs for consistency with autocast and better speed
+    model.to(dtype=torch.bfloat16)
+    print("Model moved to CUDA in bfloat16.")
 
 # Set initial text encoding
 text_weight = args.text_weight
@@ -78,6 +92,43 @@ if args.text:
     text_encoding /= text_encoding.norm(dim=-1, keepdim=True)
     if text_weight == 1.0:
         model.set_clip_encoding(encoding=text_encoding)
+
+# Use modern torch.compile only for CUDA (Stable)
+# Moved after initial encoding setup to allow for a proper warmup
+if device == "cuda":
+    try:
+        if hasattr(model, "model"):
+            print("Compiling SIREN model with torch.compile (inductor)...")
+            model.model = torch.compile(model.model)
+
+            # Explicitly compile the CLIP model for faster encoding steps
+            print("Compiling CLIP perceptor...")
+            model.perceptor = torch.compile(model.perceptor)
+
+            # Warmup to trigger compilation now instead of during first request
+            # This helps avoid a long lag on the first WebSocket message
+            print("Warming up compiled model...")
+            # Use a dummy encoding if none is set yet
+            if text_encoding is not None:
+                warmup_encoding = text_encoding
+            else:
+                # Get the correct output dimension from the CLIP perceptor
+                out_dim = 512  # fallback
+                if hasattr(model.perceptor, "visual") and hasattr(model.perceptor.visual, "output_dim"):
+                    out_dim = model.perceptor.visual.output_dim
+                warmup_encoding = torch.randn(1, out_dim, device=device)
+
+            # Ensure it's the right dtype for the model
+            if device == "mps":
+                warmup_encoding = warmup_encoding.to(dtype=torch.bfloat16)
+            elif device == "cuda" and torch.cuda.is_bf16_supported():
+                warmup_encoding = warmup_encoding.to(dtype=torch.bfloat16)
+
+            # Dry run doesn't update batch counts
+            model.model(warmup_encoding, dry_run=True)
+            print("Warmup complete.")
+    except Exception as e:
+        print(f"Note: Could not use torch.compile: {e}")
 
 app = FastAPI()
 
@@ -120,7 +171,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 if isinstance(img_encoding, int):
                     img_encoding = new_img_encoding
 
-                img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
+                # Detach here to prevent the computational graph from growing indefinitely
+                img_encoding = (args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding).detach()
 
                 if text_encoding is None:
                     clip_encoding = img_encoding
@@ -235,6 +287,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
         traceback.print_exc()
         await websocket.close()
+    finally:
+        clean_pid()
 
 
 if __name__ == "__main__":

@@ -81,7 +81,8 @@ def kill_old_process(create_new=False):
 
 def clean_pid():
     pidfile = "/tmp/mydaemon.pid"
-    os.unlink(pidfile)
+    if os.path.exists(pidfile):
+        os.unlink(pidfile)
 
 
 def clean_folder(path):

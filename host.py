@@ -1,13 +1,26 @@
 import os
-import subprocess
-import sys
-import time
 
-import numpy as np
-import torchvision
-from PIL import Image
+# Set CUDA allocation configuration before any torch calls to prevent fragmentation
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-from utils import clean_folder, clean_pid, get_args, kill_old_process
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
+import torchvision  # noqa: E402
+from PIL import Image  # noqa: E402
+
+# Increase recompile limit for torch.compile to handle dynamic behaviors
+try:
+    import torch._dynamo
+
+    torch._dynamo.config.recompile_limit = 64
+except (ImportError, AttributeError):
+    pass
+
+from utils import clean_folder, clean_pid, get_args, kill_old_process  # noqa: E402
 
 
 def clean_host_folders():
@@ -72,6 +85,7 @@ try:
             use_gabor=bool(args.use_gabor),
             gabor_scale=args.gabor_scale,
             model_name=args.clip_model,
+            do_aug=False,
         )
     else:
         model = Imagine(
@@ -84,6 +98,13 @@ try:
             gradient_accumulate_every=1,
         )
 
+    # Move to device and bfloat16 if possible
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+    if device == "cuda" and torch.cuda.is_bf16_supported():
+        model.to(dtype=torch.bfloat16)
+        print("Model moved to CUDA in bfloat16.")
+
     text_weight = args.text_weight
     img_encoding = 0
     text_encoding = None
@@ -94,6 +115,26 @@ try:
     clip_encoding = text_encoding
     if text_weight == 1.0:
         model.set_clip_encoding(encoding=text_encoding)
+
+    # Use modern torch.compile for CUDA (Stable)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda":
+        try:
+            if hasattr(model, "model"):
+                print("Compiling SIREN model with torch.compile (inductor)...")
+                model.model = torch.compile(model.model)
+
+                # Warmup to trigger compilation now instead of during first loop
+                print("Warming up compiled model...")
+                warmup_encoding = text_encoding if text_encoding is not None else torch.randn(1, 512, device=device)
+                # Ensure it's the right dtype for the model
+                if torch.cuda.is_bf16_supported():
+                    warmup_encoding = warmup_encoding.to(dtype=torch.bfloat16)
+
+                model.model(warmup_encoding, dry_run=True)
+                print("Warmup complete.")
+        except Exception as e:
+            print(f"Note: Could not use torch.compile: {e}")
 
     previous_img = None
     newest_img = None
@@ -111,7 +152,8 @@ try:
             img_path = os.path.join(host_in, str(newest_img) + ".jpg")
             print("updated img target: ", img_path)
             new_img_encoding = model.create_img_encoding(img_path)
-            img_encoding = args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding
+            # Detach here to prevent the computational graph from growing indefinitely
+            img_encoding = (args.run_avg * img_encoding + (1 - args.run_avg) * new_img_encoding).detach()
             # merge image and text depending on conditions
             if text_encoding is None:
                 clip_encoding = img_encoding

@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import time
 
 import cv2
 import numpy as np
@@ -68,6 +69,10 @@ async def stream_video():
     loss_history = []
     max_history_len = 200  # Number of points to show in graph
 
+    # FPS tracking
+    prev_time = time.time()
+    fps = 0
+
     if not cap.isOpened():
         print("Error: Could not open webcam.")
         return
@@ -111,6 +116,26 @@ async def stream_video():
                 output_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
                 if output_img is not None:
+                    # Calculate FPS
+                    curr_time = time.time()
+                    dt = curr_time - prev_time
+                    if dt > 0:
+                        # Smooth FPS a bit
+                        fps = 0.9 * fps + 0.1 * (1 / dt) if fps > 0 else 1 / dt
+                    prev_time = curr_time
+
+                    # Draw FPS on the "Real image" (input frame) in bottom right
+                    cv2.putText(
+                        frame_resized,
+                        f"{fps:.1f} FPS",
+                        (server_size - 75, server_size - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.4,
+                        (0, 255, 0),
+                        1,
+                        cv2.LINE_AA,
+                    )
+
                     # Stack them horizontally (Input | Dream)
                     comparison = np.hstack((frame_resized, output_img))
 
@@ -122,11 +147,6 @@ async def stream_video():
                     cv2.imshow(f"AuViMi: Input | Dream | Loss ({server_size}x{server_size})", comparison)
 
                 # 6. Handle Keys
-                key = cv2.waitKey(1)
-                if key == 27:
-                    break
-
-                # 5. Handle Keys
                 key = cv2.waitKey(1)
                 if key == 27:  # ESC
                     break
