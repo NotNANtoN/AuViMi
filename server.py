@@ -19,6 +19,7 @@ try:
 except (ImportError, AttributeError):
     pass
 
+import torchvision.transforms as T  # noqa: E402
 import uvicorn  # noqa: E402
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: E402
 from PIL import Image, ImageEnhance  # noqa: E402
@@ -69,7 +70,8 @@ model_kwargs = {
     "aug_both": bool(args.aug_both),
     "open_folder": False,
     "save_progress": False,
-    "do_aug": False,
+    "do_aug": True,
+    "tv_coef": 0.1,  # Reduced from 100.0 to fix blurriness
 }
 model = Imagine(**model_kwargs)
 
@@ -121,9 +123,7 @@ if device == "cuda":
                 warmup_encoding = torch.randn(1, out_dim, device=device)
 
             # Ensure it's the right dtype for the model
-            if device == "mps":
-                warmup_encoding = warmup_encoding.to(dtype=torch.bfloat16)
-            elif device == "cuda" and torch.cuda.is_bf16_supported():
+            if device == "mps" or (device == "cuda" and torch.cuda.is_bf16_supported()):
                 warmup_encoding = warmup_encoding.to(dtype=torch.bfloat16)
 
             # Dry run doesn't update batch counts
@@ -162,6 +162,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
             # 2. Update Encoding
             encode_start = time.time()
+
+            # Prepare Input Moments (Mean, Std) for Color Loss
+            # Convert to tensor on device for fast loss calc
+            img_tensor_in = T.ToTensor()(img_input).to(device)
+            # Unsqueeze to make it (1, 3, H, W)
+            img_tensor_in = img_tensor_in.unsqueeze(0)
+            in_mean = img_tensor_in.mean(dim=(2, 3))
+            in_std = img_tensor_in.std(dim=(2, 3))
+            input_moments = (in_mean, in_std)
+
             if text_weight < 1.0:
                 # Pass PIL image directly
                 new_img_encoding = model.create_img_encoding(img_input)
@@ -191,7 +201,7 @@ async def websocket_endpoint(websocket: WebSocket):
             last_avg_timings = {}
             current_loss = 0
             for _ in range(args.opt_steps):
-                img_tensor, loss, last_avg_timings = model.train_step(0, iteration_count)
+                img_tensor, loss, last_avg_timings = model.train_step(0, iteration_count, input_moments=input_moments)
                 current_loss = loss.item()
                 iteration_count += 1
             train_time = time.time() - train_start

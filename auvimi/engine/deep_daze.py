@@ -445,7 +445,7 @@ class DeepDaze(nn.Module):
         matrices = torch.stack([m00, m01, m02, m10, m11, m12], dim=1).reshape(batch_size, 2, 3)
         return matrices
 
-    def forward(self, text_embed, target_image=None, return_loss=True, dry_run=False):
+    def forward(self, text_embed, target_image=None, return_loss=True, dry_run=False, input_moments=None):
         # Profiling dictionary
         self.last_timings = {}
 
@@ -509,10 +509,22 @@ class DeepDaze(nn.Module):
         # Apply normalization
         image_pieces = self.normalize_image(image_pieces)
 
+        # Inject Global View (Full Image) to prevent ghosting
+        # We downsample the full 'out' image to CLIP resolution
+        full_view = interpolate(out, self.input_resolution)
+        full_view = self.normalize_image(full_view)
+        # Concatenate global view to the batch (batch_size + 1)
+        image_pieces = torch.cat([image_pieces, full_view], dim=0)
+
         if self.aug_both and target_image is not None:
             # Apply same sampling to target image
             target_pieces = F.grid_sample(target_image.expand(batch_size, -1, -1, -1), grid, align_corners=False)
             target_pieces = self.normalize_image(target_pieces)
+
+            # Add target global view
+            target_full = interpolate(target_image, self.input_resolution)
+            target_full = self.normalize_image(target_full)
+            target_pieces = torch.cat([target_pieces, target_full], dim=0)
 
         if not is_compiling:
             sync()
@@ -561,11 +573,20 @@ class DeepDaze(nn.Module):
         if self.tv_coef > 0:
             loss = loss + self.tv_coef * total_variation_loss(out)
 
-        # Add Saturation/Color loss to solve "grayness"
-        # We encourage higher standard deviation across the RGB channels
-        rgb_std = out.std(dim=1).mean()
-        # We want to maximize diversity, so we subtract it from the loss
-        loss = loss - 10.0 * rgb_std
+        # Color Moment Loss (Fixes Sepia/Grayness)
+        if input_moments is not None:
+            # input_moments is (mean, std) of the webcam input
+            in_mean, in_std = input_moments
+            gen_mean = out.mean(dim=(2, 3))
+            gen_std = out.std(dim=(2, 3))
+
+            # Loss = L1 distance between moments
+            moment_loss = F.l1_loss(gen_mean, in_mean) + F.l1_loss(gen_std, in_std)
+            loss = loss + 10.0 * moment_loss
+        else:
+            # Fallback: simple saturation boost
+            rgb_std = out.std(dim=1).mean()
+            loss = loss - 10.0 * rgb_std
 
         # count batches
         if not dry_run:
@@ -873,7 +894,7 @@ class Imagine(nn.Module):
             output_path = f"{current_time}_{output_path}"
         return Path(f"{output_path}.jpg")
 
-    def train_step(self, epoch, iteration):
+    def train_step(self, epoch, iteration, input_moments=None):
         total_loss = 0
         all_timings = []
 
@@ -892,7 +913,9 @@ class Imagine(nn.Module):
 
         for _ in range(self.gradient_accumulate_every):
             with amp.autocast(**autocast_kwargs):
-                out, loss = self.model(self.clip_encoding, target_image=self.target_image_tensor)
+                out, loss = self.model(
+                    self.clip_encoding, target_image=self.target_image_tensor, input_moments=input_moments
+                )
 
             t_fwd = self.model.last_timings.copy()
 
