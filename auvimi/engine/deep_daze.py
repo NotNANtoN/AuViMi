@@ -153,24 +153,27 @@ def interpolate(image, size):
     return F.interpolate(image, (size, size), mode='bilinear', align_corners=False)
 
 
-def rand_cutout(image, size, center_bias=False, center_focus=2):
+def rand_cutout(image, size, center_bias=False, center_focus=2, offset_x=None, offset_y=None):
     width = image.shape[-1]
     min_offset = 0
     max_offset = width - size
-    if center_bias:
-        # sample around image center
-        center = max_offset / 2
-        std = center / center_focus
-        offset_x = int(random.gauss(mu=center, sigma=std))
-        offset_y = int(random.gauss(mu=center, sigma=std))
-        # resample uniformly if over boundaries
-        offset_x = random.randint(min_offset, max_offset) if (offset_x > max_offset or offset_x < min_offset) else offset_x
-        offset_y = random.randint(min_offset, max_offset) if (offset_y > max_offset or offset_y < min_offset) else offset_y
-    else:
-        offset_x = random.randint(min_offset, max_offset)
-        offset_y = random.randint(min_offset, max_offset)
+    
+    if offset_x is None or offset_y is None:
+        if center_bias:
+            # sample around image center
+            center = max_offset / 2
+            std = center / center_focus
+            offset_x = int(random.gauss(mu=center, sigma=std))
+            offset_y = int(random.gauss(mu=center, sigma=std))
+            # resample uniformly if over boundaries
+            offset_x = random.randint(min_offset, max_offset) if (offset_x > max_offset or offset_x < min_offset) else offset_x
+            offset_y = random.randint(min_offset, max_offset) if (offset_y > max_offset or offset_y < min_offset) else offset_y
+        else:
+            offset_x = random.randint(min_offset, max_offset)
+            offset_y = random.randint(min_offset, max_offset)
+            
     cutout = image[:, :, offset_x:offset_x + size, offset_y:offset_y + size]
-    return cutout
+    return cutout, (offset_x, offset_y)
 
 
 def create_clip_img_transform(image_width):
@@ -257,6 +260,7 @@ class DeepDaze(nn.Module):
             averaging_weight=0.3,
             use_gabor=False,
             gabor_scale=10.0,
+            aug_both=False,
     ):
         super().__init__()
         # load clip
@@ -298,6 +302,7 @@ class DeepDaze(nn.Module):
         self.center_bias = center_bias
         self.center_focus = center_focus
         self.averaging_weight = averaging_weight
+        self.aug_both = aug_both
         
     def reset_weights(self):
         """Reset all weights in the SIREN/INR model."""
@@ -323,7 +328,7 @@ class DeepDaze(nn.Module):
             sizes = torch.randint(int(lower), int(upper), (self.batch_size,))
         return sizes
 
-    def forward(self, text_embed, return_loss=True, dry_run=False):
+    def forward(self, text_embed, target_image=None, return_loss=True, dry_run=False):
         # Profiling dictionary
         self.last_timings = {}
         
@@ -353,14 +358,26 @@ class DeepDaze(nn.Module):
         sizes = self.sample_sizes(lower_bound, self.upper_bound_cutout, width, self.gauss_mean)
 
         # create normalized random cutouts
-        if self.do_cutout:   
-            image_pieces = [rand_cutout(out, size, center_bias=self.center_bias, center_focus=self.center_focus) for size in sizes]
-            image_pieces = [interpolate(piece, self.input_resolution) for piece in image_pieces]
+        if self.do_cutout:
+            image_pieces = []
+            target_pieces = []
+            for size in sizes:
+                piece, offsets = rand_cutout(out, size, center_bias=self.center_bias, center_focus=self.center_focus)
+                image_pieces.append(interpolate(piece, self.input_resolution))
+                
+                if self.aug_both and target_image is not None:
+                    # Apply same cutout to target image
+                    t_piece, _ = rand_cutout(target_image, size, offset_x=offsets[0], offset_y=offsets[1])
+                    target_pieces.append(interpolate(t_piece, self.input_resolution))
+            
+            image_pieces = torch.cat([self.normalize_image(piece) for piece in image_pieces])
+            if self.aug_both and target_image is not None:
+                target_pieces = torch.cat([self.normalize_image(piece) for piece in target_pieces])
         else:
-            image_pieces = [interpolate(out.clone(), self.input_resolution) for _ in sizes]
+            image_pieces = torch.cat([self.normalize_image(interpolate(out.clone(), self.input_resolution)) for _ in sizes])
+            if self.aug_both and target_image is not None:
+                target_pieces = torch.cat([self.normalize_image(interpolate(target_image.clone(), self.input_resolution)) for _ in sizes])
 
-        # normalize
-        image_pieces = torch.cat([self.normalize_image(piece) for piece in image_pieces])
         sync()
         self.last_timings['cutouts'] = time.time() - start_cutouts
         
@@ -369,15 +386,26 @@ class DeepDaze(nn.Module):
         device_type = "cuda" if "cuda" in str(self.perceptor.visual.conv1.weight.device) else "mps" if "mps" in str(self.perceptor.visual.conv1.weight.device) else "cpu"
         with amp.autocast(device_type=device_type, enabled=True):
             image_embed = self.perceptor.encode_image(image_pieces)
+            if self.aug_both and target_image is not None:
+                target_embed = self.perceptor.encode_image(target_pieces)
+            else:
+                target_embed = text_embed
         sync()
         self.last_timings['clip'] = time.time() - start_clip
             
         # calc loss
         # loss over averaged features of cutouts
         avg_image_embed = image_embed.mean(dim=0).unsqueeze(0)
-        averaged_loss = -self.loss_coef * torch.cosine_similarity(text_embed, avg_image_embed, dim=-1).mean()
-        # loss over all cutouts
-        general_loss = -self.loss_coef * torch.cosine_similarity(text_embed, image_embed, dim=-1).mean()
+        
+        # If we have target_embed for each cutout, we average it too for the averaged_loss
+        if self.aug_both and target_image is not None:
+            avg_target_embed = target_embed.mean(dim=0).unsqueeze(0)
+            averaged_loss = -self.loss_coef * torch.cosine_similarity(avg_target_embed, avg_image_embed, dim=-1).mean()
+            general_loss = -self.loss_coef * torch.cosine_similarity(target_embed, image_embed, dim=-1).mean()
+        else:
+            averaged_loss = -self.loss_coef * torch.cosine_similarity(text_embed, avg_image_embed, dim=-1).mean()
+            general_loss = -self.loss_coef * torch.cosine_similarity(text_embed, image_embed, dim=-1).mean()
+        
         # merge losses
         loss = averaged_loss * (self.averaging_weight) + general_loss * (1 - self.averaging_weight)
 
@@ -435,6 +463,7 @@ class Imagine(nn.Module):
             save_video=False,
             use_gabor=False,
             gabor_scale=10.0,
+            aug_both=False,
     ):
 
         super().__init__()
@@ -497,9 +526,15 @@ class Imagine(nn.Module):
         else:
             input_res = clip_perceptor.input_resolution.item()
         self.clip_transform = create_clip_img_transform(input_res)
+        self.target_transform = T.Compose([
+            T.Resize(image_width),
+            T.CenterCrop((image_width, image_width)),
+            T.ToTensor(),
+        ])
         
         self.iterations = iterations
         self.image_width = image_width
+        self.aug_both = aug_both
         total_batches = self.epochs * self.iterations * batch_size * gradient_accumulate_every
         model = DeepDaze(
                 self.perceptor,
@@ -524,6 +559,7 @@ class Imagine(nn.Module):
                 averaging_weight=averaging_weight,
                 use_gabor=use_gabor,
                 gabor_scale=gabor_scale,
+                aug_both=aug_both,
             ).to(self.device)
         self.model = model
         
@@ -599,6 +635,15 @@ class Imagine(nn.Module):
     def set_clip_encoding(self, text=None, img=None, encoding=None):
         encoding = self.create_clip_encoding(text=text, img=img, encoding=encoding)
         self.clip_encoding = encoding.to(self.device)
+        
+        if self.aug_both and img is not None:
+            if isinstance(img, str):
+                img_pil = Image.open(img)
+            else:
+                img_pil = img
+            self.target_image_tensor = self.target_transform(img_pil).unsqueeze(0).to(self.device)
+        else:
+            self.target_image_tensor = None
     
     def index_of_first_separator(self) -> int:
         for c, word in enumerate(self.all_words):
@@ -666,7 +711,7 @@ class Imagine(nn.Module):
         device_type = "cuda" if "cuda" in str(self.device) else "mps" if "mps" in str(self.device) else "cpu"
         for _ in range(self.gradient_accumulate_every):
             with amp.autocast(device_type=device_type, enabled=True):
-                out, loss = self.model(self.clip_encoding)
+                out, loss = self.model(self.clip_encoding, target_image=self.target_image_tensor)
             
             t_fwd = self.model.last_timings.copy()
             

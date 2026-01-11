@@ -36,6 +36,7 @@ def get_args():
         parser.add_argument("--use_gabor", type=int, default=0, help="Use Gabor wavelet activation (WIRE) instead of Sine (SIREN).")
         parser.add_argument("--gabor_scale", type=float, default=10.0, help="Scale (s0) for the Gabor Gaussian envelope.")
         parser.add_argument("--clip_model", type=str, default="ViT-B/32", help="CLIP model to use (e.g., ViT-B/32, RN50).")
+        parser.add_argument("--aug_both", type=int, default=0, help="Apply the same augmentations to both source and target image.")
         
         args = parser.parse_args()
         return args

@@ -5,14 +5,25 @@ import time
 import uvicorn
 import numpy as np
 import torch
+import subprocess
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from PIL import Image
+from PIL import Image, ImageEnhance
 from utils import get_args
 
 from auvimi.engine.deep_daze import Imagine
 
 # --- Import Logic ---
 args = get_args()
+
+# --- Session Recording Setup ---
+SESSION_ROOT = "sessions"
+os.makedirs(SESSION_ROOT, exist_ok=True)
+current_session_id = time.strftime("%Y%m%d-%H%M%S")
+session_dir = os.path.join(SESSION_ROOT, current_session_id)
+input_dir = os.path.join(session_dir, "input")
+output_dir = os.path.join(session_dir, "output")
+os.makedirs(input_dir, exist_ok=True)
+os.makedirs(output_dir, exist_ok=True)
 
 # --- Device Setup ---
 device = "cpu"
@@ -36,6 +47,7 @@ model_kwargs = {
     "use_gabor": bool(args.use_gabor),
     "gabor_scale": args.gabor_scale,
     "model_name": args.clip_model,
+    "aug_both": bool(args.aug_both),
     "open_folder": False,
     "save_progress": False,
 }
@@ -92,6 +104,10 @@ async def websocket_endpoint(websocket: WebSocket):
             start_time = time.time()
             data = await websocket.receive_bytes()
             
+            # Save Input Frame
+            with open(os.path.join(input_dir, f"{iteration_count:05d}.jpg"), "wb") as f:
+                f.write(data)
+            
             # Load image directly from bytes (no disk IO)
             img_input = Image.open(io.BytesIO(data)).convert("RGB")
             
@@ -117,7 +133,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 else:
                     clip_encoding = img_encoding * (1 - text_weight) + text_encoding * text_weight
 
-                model.set_clip_encoding(encoding=clip_encoding)
+                model.set_clip_encoding(img=img_input, encoding=clip_encoding)
             
             encode_time = time.time() - encode_start
 
@@ -140,9 +156,23 @@ async def websocket_endpoint(websocket: WebSocket):
                 img_np = np.uint8(img_tensor.cpu().detach().squeeze(0).permute(1, 2, 0).numpy() * 255)
                 img_pil = Image.fromarray(img_np)
                 
+                # OPTIONAL: Definition Boost (Contrast & Sharpness)
+                boost_contrast = False
+                if boost_contrast:
+                    enhancer = ImageEnhance.Contrast(img_pil)
+                    img_pil = enhancer.enhance(1.2) # Boost contrast by 20%
+                    enhancer = ImageEnhance.Sharpness(img_pil)
+                    img_pil = enhancer.enhance(1.5) # Sharpen significantly
+                    
+                # Save Output Frame
+                img_pil.save(os.path.join(output_dir, f"{iteration_count:05d}.jpg"), quality=90)
+                
                 with io.BytesIO() as buf:
                     img_pil.save(buf, format='JPEG', quality=80)
                     byte_data = buf.getvalue()
+                
+                # Send metadata (loss) followed by image data
+                await websocket.send_json({"loss": current_loss})
                 await websocket.send_bytes(byte_data)
             
             io_write_time = time.time() - write_start
@@ -158,7 +188,28 @@ async def websocket_endpoint(websocket: WebSocket):
             print(f"Loop: {total_time:.3f}s | Encode: {encode_time:.3f}s | Train: {train_time:.3f}s (SIREN: {t_siren:.3f}s, CLIP: {t_clip:.3f}s, Cut: {t_cut:.3f}s, Back: {t_back:.3f}s) | Loss: {current_loss:.4f}")
                 
     except WebSocketDisconnect:
-        print("Client disconnected")
+        print(f"Client disconnected. Encoding videos for session {current_session_id}...")
+        
+        # Build MP4s using ffmpeg
+        try:
+            # Output Video
+            out_mp4 = os.path.join(session_dir, "transformed.mp4")
+            subprocess.run([
+                "ffmpeg", "-y", "-framerate", "10", "-i", os.path.join(output_dir, "%05d.jpg"),
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", out_mp4
+            ], check=True, capture_output=True)
+            
+            # Input Video
+            in_mp4 = os.path.join(session_dir, "original.mp4")
+            subprocess.run([
+                "ffmpeg", "-y", "-framerate", "10", "-i", os.path.join(input_dir, "%05d.jpg"),
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", in_mp4
+            ], check=True, capture_output=True)
+            
+            print(f"✅ Videos saved to {session_dir}")
+        except Exception as e:
+            print(f"❌ Failed to encode videos: {e}")
+
     except Exception as e:
         print(f"Error: {e}")
         import traceback
